@@ -1,0 +1,37 @@
+#side Type Switch
+
+#type Grow
+#color FFF
+
+#hardware
+  solar-cells 0.4
+  constructor 0.4
+  armor 10
+  processor 10
+#code
+do
+  constructor-progress nif
+    0.5 1 balance-type
+    0.5 2 balance-type
+  then
+  autoconstruct
+forever
+
+#type GrowPlus
+#color E11
+#decoration E11 cross
+
+#hardware
+  solar-cells 0.4
+  constructor 0.4
+  armor 10
+  processor 10
+#code
+do
+  constructor-progress nif
+    0.5 1 balance-type
+    0.5 2 balance-type
+  then
+  autoconstruct
+forever
+#end

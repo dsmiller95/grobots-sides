@@ -1,0 +1,14 @@
+#side Overwhelm
+#color 8FF
+
+#type Grow
+#hardware
+  solar-cells 0.4
+  constructor 0.4
+  armor 10
+  processor 2
+#code
+do
+  autoconstruct
+forever
+#end

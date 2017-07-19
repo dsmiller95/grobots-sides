@@ -1,0 +1,77 @@
+#side parasite
+#author Dan
+#date 6 Feb 2002
+
+(20030314) Shrank.
+
+#color dc00d9
+
+#type algae cell
+#color ff0000
+
+Just sits there and reproduces.
+
+#hardware
+processor 100
+solar-cells .025
+constructor 1
+energy 200 50
+robot-sensor 15 30
+engine 0.05
+enemy-syphon 3 15
+
+armor 100
+
+#code
+#var last-robot-result
+
+
+#start
+do
+	constructor-type nif
+		1 constructor-type!
+	then
+	energy 150 > constructor-max-rate * constructor-rate!
+	enemy-syphoned 0.5 > 10 20 ifev periodic-robot-sensor drop
+	robot-found if
+		;if
+			0 num-robot-results 1 - random-int current-robot-result!
+			;last-robot-result 1 + num-robot-results mod current-robot-result!
+			current-robot-result do-test&
+			start-loop& jump
+			
+			;searches for robot with 10 or more energy
+			do-test: dup current-robot-result = 10 robot-energy <= or end-while& ifg
+				do-test&
+				start-loop:
+				current-robot-result 1 - num-robot-results mod current-robot-result! ;; shift current-robot-result [ -- ]
+				jump
+			end-while:
+			drop
+			current-robot-result last-robot-result!
+		;then
+		
+		energy 150 > robot-distance 5 > and if
+			robot-position robot-velocity seek-moving-location
+		else
+			0 engine-power!
+		then
+		robot-position robot-velocity 7 vs* v+ position v- rect-to-polar
+		enemy-syphon-direction! enemy-syphon-distance!
+		enemy-syphon-max-rate enemy-syphon-rate!
+	else
+		;drop
+		0 enemy-syphon-rate!
+		sync sync sync sync sync sync sync sync sync sync
+		sync sync sync sync sync sync sync sync sync sync
+		sync sync sync sync sync sync sync sync sync sync
+		sync sync sync sync sync sync sync sync sync
+	then
+forever
+
+#end
+
+
+
+
+

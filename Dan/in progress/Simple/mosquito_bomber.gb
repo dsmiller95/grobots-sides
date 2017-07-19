@@ -1,0 +1,71 @@
+#side mosquito bomber
+#author Devon
+#date 6 Feb 2002
+#seed 1
+
+#color 656579
+#type algae cell
+#color ff0000
+#hardware
+processor 10
+solar-cells .01
+constructor .8
+energy 100 10
+armor 25
+engine 0.02
+eater 1
+food-sensor 5
+robot-sensor 5
+repair-rate 0.1
+bomb 100
+#code
+
+#vector dest
+
+new-dest:
+   0 world-width random 0 world-height random dest!
+return
+
+#start
+new-dest
+do
+
+enemy-collision if
+    die
+then
+energy 10 < if
+   energy 5 < if
+      0.001 engine-power!
+   else
+   0.005 engine-power!
+   then
+then
+energy 30 > if
+   constructor-type nif
+      1 constructor-type!
+   then
+   constructor-max-rate constructor-rate!
+else
+0 constructor-rate!
+then
+energy 10 > if armor max-armor < and-if
+   max-repair-rate repair-rate!
+then
+energy 15 > if
+   50 periodic-robot-sensor drop
+then
+robot-found if energy 10 > and-if
+    robot-position robot-velocity seek-moving-location
+else
+   40 periodic-food-sensor drop
+   food-found if
+      food-position seek-location
+   else
+      dest seek-location
+      dest position 3 in-range if
+         new-dest
+      then
+   then
+then
+forever
+#end

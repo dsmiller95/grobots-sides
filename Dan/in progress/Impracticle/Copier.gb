@@ -1,0 +1,50 @@
+#side Grower
+#author Dan
+#date 6 Feb 2002
+
+(20030314) Dan.
+
+#color 792852
+
+#type Killer Vegetable
+#color F0E184
+#hardware
+  solar-cells 38
+  constructor 38
+  armor 100
+  processor 1
+  energy 250 25
+#code
+do
+	energy 10 >= if
+		2 constructor-type!
+		constructor-max-rate constructor-rate!
+	else
+		0 constructor-rate!
+	then
+forever
+
+#type nothing
+#color F0E184
+#hardware
+
+armor 200
+solar-cells .04
+processor 1
+engine 0.05
+
+#code
+#vector dest
+
+new-dest:
+  0 world-width random 0 world-height random dest!
+return
+
+#start
+new-dest
+do
+    dest seek-location
+    position dest 3 in-range new-dest& ifc
+forever
+
+#end

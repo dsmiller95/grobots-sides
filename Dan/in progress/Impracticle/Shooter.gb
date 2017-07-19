@@ -1,0 +1,53 @@
+#side Super Shooter
+#author Dan
+#date 6 Feb 2002
+
+(20030314) Dan.
+
+#color 792852
+
+#type Killer Vegetable
+#color F0E184
+#hardware
+  solar-cells 38
+  constructor 38
+  armor 100
+  processor 1
+  energy 250 25
+  grenades 75 44 3
+  robot-sensor 44
+#code
+
+do
+   grenades-reload-time periodic-robot-sensor if
+    robot-found if
+      robot-position robot-velocity lead-grenade
+    then
+  then
+	energy 10 >= if
+		2 constructor-type!
+		constructor-max-rate constructor-rate!
+	else
+		0 constructor-rate!
+	then
+forever
+
+#type nothing
+#color F0E184
+#hardware
+  solar-cells 0.1
+  grenades 5 15 40
+  robot-sensor 15
+  armor 200
+  processor 2
+#code
+
+do
+  grenades-reload-time periodic-robot-sensor if
+    robot-found if
+      robot-position robot-velocity lead-grenade
+    then
+  then
+forever
+
+#end

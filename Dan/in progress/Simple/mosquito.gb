@@ -1,0 +1,79 @@
+#side mosquito
+#author Devon
+#date 6 Feb 2002
+(20030314) Shrank.
+#color 656579
+#type algae cell
+#color ff0000
+#hardware
+processor 10
+solar-cells .01
+constructor .8
+energy 100 10
+armor 50
+engine 0.02
+eater 1
+food-sensor 5
+repair-rate 0.1
+#code
+
+#vector dest
+#var birthtime
+
+
+new-dest:
+   0 world-width random 0 world-height random dest!
+return
+
+#start
+new-dest
+time birthtime!
+
+do
+energy 10 < if
+   energy 5 < if
+      0.001 engine-power!
+   else
+   0.005 engine-power!
+   then
+then
+
+time birthtime - 2000 > if
+   die
+then
+
+energy 30 > if
+   constructor-type nif
+      1 constructor-type!
+   then
+   constructor-max-rate constructor-rate!
+else
+   0 constructor-rate!
+then
+energy 10 > if armor max-armor < and-if
+   max-repair-rate repair-rate!
+then
+40 periodic-food-sensor drop
+food-found if
+   food-position seek-location
+   food-distance radius = if
+      0 engine-power!
+   else
+      food-distance 2 < if
+         0.005 engine-power!
+      else
+         food-distance 3 <= if
+            0.01 engine-power!
+         else
+            engine-max-power engine-power!
+         then
+      then
+   then
+else
+   dest seek-location
+   dest position 3 in-range if
+      new-dest
+   then
+then
+forever
+#end

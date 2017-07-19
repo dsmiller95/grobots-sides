@@ -1,0 +1,14 @@
+#side food
+#color 000000
+
+#type blob
+#color 000000
+#hardware
+solar-cells 250
+constructor 5000
+energy 10000 0
+#code
+do
+autoconstruct
+forever
+#end

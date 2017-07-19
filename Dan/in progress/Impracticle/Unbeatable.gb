@@ -1,0 +1,296 @@
+#side Super Duper
+#author Devon
+#date 6 Feb 2002
+
+(20030314) Shrank.
+
+#color 070
+
+#type Factory
+#color 0f0
+
+Just sits there and reproduces.
+
+#hardware
+processor 1
+solar-cells 30
+constructor 30
+energy 100 50
+armor 500
+repair-rate 5
+
+#code
+
+do
+  constructor-type nif
+    2 constructor-type!
+  then
+  energy 10 > if
+    constructor-max-rate constructor-rate!
+  else
+    0 constructor-rate!
+  then
+forever
+
+#type Aux Factory
+#color 0f0
+
+Just sits there and reproduces.
+
+#hardware
+processor 1
+solar-cells 30
+constructor 30
+energy 100 50
+armor 500
+repair-rate 5
+
+#code
+
+do
+  constructor-type nif
+    3 6 random-int constructor-type!
+  then
+  energy 10 > if
+    constructor-max-rate constructor-rate!
+  else
+    0 constructor-rate!
+  then
+forever
+
+#type core
+#color 0c9
+
+(20030716) Slightly smaller.
+
+#hardware
+  processor 2
+  energy 5 0
+  solar-cells .4
+  constructor .4
+  armor 30
+#code
+constructor-max-rate constructor-rate!
+do
+  constructor-type nif
+    3 4 random-int 1 max constructor-type!
+  then
+forever
+
+#type ring
+#color 000
+
+(20030602) Uses vread/vwrite.
+           Separate fighting mode; keep distance from enemies.
+(20030716) Friendly fire avoidance.
+           Don't give up fighting when out of energy.
+
+#hardware
+  processor 25
+  radio read write
+  robot-sensor 16 8
+  
+  blaster 20 16 20
+  armor 200
+  repair-rate .04
+  
+  engine .03
+  energy 100 0
+  solar-cells .15
+  
+#code
+
+;mem:
+;2,3: home
+
+#vector post
+#var dir
+#const fighting-distance 14
+
+pick-post:
+  1 type-population sqrt 4 + 2 type-population max
+  dir
+  polar-to-rect 2 vread v+ post!
+return
+
+#start
+  0 world-width random 0 world-height random position v- angle dir!
+2 read if
+  2 vread 5 vs* position v+ 6 vs/
+else
+  position
+then 2 vwrite
+
+idle:
+do
+  pick-post
+  post seek-location
+  time robot-sensor-time 45 + >= if energy blaster-firing-cost > and-if
+    fire-robot-sensor sync
+    robot-found if
+      record-target^
+      shoot^
+      fighting& jump
+    then
+  then
+  energy 25 > max-repair-rate 0 ifev repair-rate!
+  sync
+forever
+
+#vector target-position
+#vector target-velocity
+#var target-distance
+
+fighting:
+do
+  position target-position v- unitize fighting-distance vs* target-position v+
+    target-velocity seek-moving-location
+  time robot-sensor-time blaster-reload-time + >= if
+    fire-robot-sensor sync
+    robot-found idle& nifg
+    record-target^
+    energy blaster-firing-cost > shoot& ifc
+  then
+  energy 25 > max-repair-rate 0 ifev repair-rate!
+forever
+
+record-target:
+  robot-position target-position!
+  robot-velocity target-velocity!
+  robot-distance target-distance!
+return
+
+#var blast-direction
+#vector blast-velocity
+
+shoot:
+  target-velocity velocity v- 2dup target-distance blaster-speed / vs* target-position v+
+  position dist blaster-speed / vs* target-position v+
+  position v- angle blast-direction!
+  velocity blaster-speed blast-direction polar-to-rect v+ blast-velocity!
+;look for friends
+  0 robot-sensor-sees-enemies!
+  1 robot-sensor-sees-friends!
+  target-distance 2 / robot-sensor-focus-distance!
+  blast-direction robot-sensor-focus-direction!
+  fire-robot-sensor sync
+  1 robot-sensor-sees-enemies!
+  0 robot-sensor-sees-friends!
+  0 robot-sensor-focus-distance!
+;anybody in the way?
+  robot-found if
+    do
+      robot-position position v- 2dup
+      blast-velocity robot-velocity v- unitize dot dup radius > swap target-distance < and
+      rrot blast-velocity robot-velocity v- unitize cross abs robot-radius .2 + < and ifr
+    next-robot while-loop
+  then
+;shoot
+  blast-direction fire-blaster
+return
+
+#type algae
+#color 0f0
+
+#hardware
+  processor 5
+  energy 20 5
+  solar-cells .4
+  constructor .4
+  
+  armor 100
+
+#code
+
+do
+  constructor-type nif
+    5 6 random-int constructor-type!
+  then
+  energy 10 > if
+    constructor-max-rate constructor-rate!
+  else
+    0 constructor-rate!
+  then
+forever
+
+#type fighter
+#color f0d
+
+Communicates, to help find targets.
+
+(20021003) Cut repair rate in half and increased solar cells, to reduce starvation.
+(20021025) Sends time on messages, and ignores old ones.
+(20021025) Reduced range and made it a little smarter.
+(20021026) Better steering.
+
+#hardware
+  processor 20
+  engine .07
+  
+  solar-cells .15   ;c 270
+  energy 100 30
+  
+  armor 150
+  repair-rate .1   ;c 75
+  
+  robot-sensor 15 1
+  blaster 15 1 15
+  radio send receive
+
+#code
+
+do
+  energy 10 > if
+    scan^
+  else
+    0 engine-power!
+  then
+  sync
+forever
+
+#var next-scan 0
+#const scan-interval 53
+#const fighting-range 2
+
+scan:
+  time next-scan < ifr
+  fire-robot-sensor sync
+  robot-found if
+    energy 20 > if
+      robot-position robot-velocity robot-distance blaster-speed / vs* v+
+        position v-
+      robot-distance fighting-range > if
+        engine-max-power engine-power!
+        2dup unitize 5 vs/ engine-velocity!
+      else
+        0 engine-power!
+      then
+      robot-distance robot-radius - radius 2.5 * <= if
+        angle fire-blaster
+      else
+        2drop
+      then
+    then
+    robot-position time 3 1 send
+    time blaster-reload-time + next-scan!
+  else
+    ;use radio
+    0 engine-power!
+    do 1 messages while
+      energy 40 > if
+        1 receive drop
+        60 + time >= if
+          position v-
+          2dup norm fighting-range > if
+            engine-max-power engine-power!
+            2dup engine-velocity!
+          then
+        then
+        2drop
+      then
+    loop
+    time scan-interval + next-scan!
+  then
+return
+
+#end

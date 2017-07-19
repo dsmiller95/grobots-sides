@@ -1,0 +1,56 @@
+#side my-side
+#color 070
+
+#type eater
+#color 0f0
+#hardware
+processor 2
+solar-cells .075
+constructor 1
+energy 500 1
+armor 100
+engine 0.2
+food-sensor 7
+eater 1
+grenades 3 10 1
+robot-sensor 10
+repair-rate 0.1
+#code
+
+#vector dest
+new-dest:
+ 0 world-width random 0 world-height random dest!
+return
+
+#start
+new-dest
+do
+energy 250 > if
+   1 constructor-type!
+   constructor-max-rate constructor-rate!
+else
+   0 constructor-rate!
+then
+armor max-armor < if
+   energy 100 > if
+      max-repair-rate repair-rate!
+   then
+then
+grenades-reload-time periodic-robot-sensor if robot-found and-if
+    robot-position position 8 in-range if
+        0 engine-power!
+    else
+        robot-position robot-velocity seek-moving-location
+    then
+    robot-position robot-velocity lead-grenade
+else
+    20 periodic-food-sensor drop
+    food-found if
+        food-position seek-location
+    else
+        dest seek-location 0.05 engine-power!
+        position dest 3 in-range new-dest& ifc
+    then
+then
+forever
+#end

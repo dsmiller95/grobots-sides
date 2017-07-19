@@ -1,0 +1,40 @@
+#side Dan Algae
+#author Dan
+#date 6 Feb 2002
+
+#color dcc440
+
+#type Killer Vegetable
+#color 28e0d9
+#hardware
+  solar-cells .3
+  constructor .3
+  engine .05
+  eater 2
+  armor 100
+  processor 5
+  energy 250 25
+  food-sensor 8
+  grenades 50 20 34
+  robot-sensor 20
+#code
+
+#var fighting
+
+do
+  autoconstruct
+44 periodic-food-sensor drop
+  food-found if
+    food-position seek-location
+  else
+    0 engine-power!
+  then
+  grenades-reload-time periodic-robot-sensor if
+; line 50
+    robot-found if
+      robot-position robot-velocity lead-grenade
+    then
+  then
+forever
+
+#end

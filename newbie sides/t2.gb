@@ -1,0 +1,247 @@
+#side T2-base-based
+#Author mcmadhatter
+;Bits have been borrowed from the tutorials for this team
+#color 1122FF
+#seed  3 4 4 2 1 2 1 2 1 2 1
+#code
+#vector dest
+#vector home
+#var x
+#var y
+
+base-wander:  ;wander within a fixed radius of the home point
+position dest 3 in-range if
+  1 read x!
+  2 read y!
+  x 10 - x 10 + random 0 max world-width min y 10 - y 10 + random 0 max world-height min dest!
+  then
+  dest seek-location
+return
+
+world-wander:  ; wander around the world at random
+seek:
+  position dest 3 in-range if
+  position drop x!
+  position nip  y!
+  0 world-width random 0 world-height random dest!
+then
+  dest seek-location
+  .1 engine-power!
+return
+
+
+
+#type Fighter
+#color DDEE11
+
+#hardware
+
+  processor 20
+  constructor 1.5
+  energy 300 10
+  solar-cells .175
+  armor 300
+  engine .05
+  robot-sensor 8
+  repair-rate .1
+  blaster 4 8 2
+#code
+#const call-ch 5
+#vector target
+
+
+
+;;Go to a location and kill any enemies seen
+ ;takes target as an argument
+attack: ; tx ty --
+  target!
+  do
+    robot-found if
+      target robot-velocity seek-moving-location
+    else
+      target seek-location
+    then
+    blaster-reload-time periodic-robot-sensor if
+      robot-found if
+        robot-position robot-velocity lead-blaster
+        ;stay a short distance away from the target:
+        position robot-position v- unitize 2.5 vs*
+          robot-position v+ robot-velocity 10 vs* v+ target!
+      else
+        position target 3 in-range ifr ;nobody here - give up
+      then
+    then
+    robot-found nif 13 periodic-shot-sensor and-if shot-found and-if
+      shot-velocity unitize -20 vs* shot-position v+ target!
+    then
+  energy armor min 20 > while-loop
+return
+
+#start
+position dest!
+do
+ 
+  energy 20 > if 57 periodic-robot-sensor and-if robot-found and-if
+   0 engine-power!
+    robot-position 2 call-ch send
+    robot-position attack^
+  else
+ 
+   world-wander^
+
+  energy armor min 50 > if
+ 
+    15 periodic-shot-sensor if shot-found and-if
+      0 engine-power!
+      shot-velocity unitize -20 vs* shot-position v+
+      2dup 2 call-ch send attack^
+    then
+     call-ch receive attack& ifc
+  else
+     call-ch clear-messages
+       world-wander^
+    
+  then
+  then
+  armor max-armor < energy 10 > and repair-rate!
+  autoconstruct
+   
+forever
+
+#type Base Defence
+#color DE0122
+
+#hardware
+
+  processor 10
+  energy 25 15
+  solar-cells .175
+  armor 50
+  engine .03
+  radio read
+  grenades 4 14 3
+  robot-sensor 14
+#code
+
+fire:
+0 engine-power!
+grenades-reload-time periodic-robot-sensor if
+    robot-found if
+      robot-position robot-velocity lead-grenade
+    then
+  then
+  return
+  
+#start
+sync sync sync
+sync sync sync
+1 read x!
+2 read y!
+x y dest!
+
+x 4 - y 4 - seek-location
+do
+ base-wander^
+ 10 energy < if
+ fire^
+ then
+ 
+forever
+
+#type Home
+#color DDEE11
+
+#hardware
+  radio write
+  processor 20
+  constructor 2
+  energy 1000 10
+  solar-cells .1
+  armor 100
+  repair-rate .1
+#code
+#start
+position home!
+do
+position home 0 in-range nif
+  position home!
+  position drop x!
+  position nip  y!
+x 1 write
+y 2 write
+then
+constructor-remaining 0 = if
+1 4 random-int constructor-type!
+then
+constructor-max-rate constructor-rate!
+forever
+
+#type eater
+#color AABBCC
+#hardware
+  radio read
+  processor 20
+  energy 500 10
+  solar-cells .1
+  engine 0.04
+  armor 50
+  eater 1
+  syphon 3 5
+  food-sensor 20
+#code
+
+eat:
+ 44 periodic-food-sensor drop
+  food-found if
+    food-position seek-location
+  else
+    0 engine-power!
+  then
+ return
+ 
+spoon-feed:
+do
+1 read x!
+2 read y!
+x y dest!
+dest seek-location
+position dest 5 in-range until-loop
+0 engine-power!
+dest position v- rect-to-polar syphon-direction! syphon-distance!
+do
+0 engine-power!
+
+do
+1 read x!
+2 read y!
+x y dest!
+dest seek-location
+position dest 5 in-range until-loop
+
+1 read x!
+2 read y!
+x y dest!
+dest position v- rect-to-polar syphon-direction! syphon-distance!
+
+
+syphon-max-rate negate syphon-rate!
+energy  syphon-max-rate  < until-loop
+
+
+return
+
+#start
+sync
+sync
+
+do
+energy 0.9 max-energy * > if
+spoon-feed^
+else
+0 syphon-rate!
+eat^
+then
+  
+forever
+
+#end

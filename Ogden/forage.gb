@@ -1,0 +1,51 @@
+#side Forage
+#author Ogden
+#color 029
+
+#type Forager
+
+#hardware
+  engine 0.07
+  constructor 1
+  eater 2
+  energy 250 25
+  food-sensor 8 1
+  robot-sensor 7 1
+  processor 10
+  armor 150
+  blaster 40 6 15
+  repair-rate 0.3
+  
+#code
+#var directionx
+#var directiony
+#start
+do
+
+  autoconstruct
+  
+  44 periodic-food-sensor drop
+  food-found if
+    food-position seek-location
+    0 world-width random 0 world-height random directiony! directionx!
+  else
+    engine-power nif
+      0 world-width random 0 world-height random directiony! directionx!
+    then
+    directionx directiony seek-location
+  then
+  
+  blaster-reload-time periodic-robot-sensor drop
+  robot-found if
+    robot-position robot-velocity lead-blaster
+  then
+  
+  energy 200 >= armor max-armor = not and if
+    max-repair-rate repair-rate!
+  else
+    0 repair-rate!
+  then
+  
+forever
+
+#end

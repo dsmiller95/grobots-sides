@@ -19,6 +19,7 @@
 #code
 #var directionx
 #var directiony
+#var running 0
 #start
 do
   ; make new
@@ -33,20 +34,36 @@ do
   
   ; seek food
   44 periodic-food-sensor drop
-  food-found if
-    food-position seek-location
-    0 world-width random 0 world-height random directiony! directionx!
-  else
-    engine-power nif
+  running nif
+    food-found if
+      food-position seek-location
       0 world-width random 0 world-height random directiony! directionx!
+    else
+      engine-power nif
+        0 world-width random 0 world-height random directiony! directionx!
+      then
+      directionx directiony seek-location
     then
-    directionx directiony seek-location
   then
   
-  ; attac
+  ; attac/run
   blaster-reload-time periodic-robot-sensor drop
   robot-found if
+    do
+      robot-bomb if
+        1 running!
+        break& jump
+      then
+    next-robot while-loop
+    0 running!
+break:
     robot-position robot-velocity lead-blaster
+    running if
+      robot-velocity engine-velocity!
+      engine-max-power engine-power!
+    then
+  else
+    0 running!
   then
   
   ; protec

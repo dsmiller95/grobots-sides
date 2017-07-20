@@ -17,8 +17,7 @@
   repair-rate 0.3
   
 #code
-#var directionx
-#var directiony
+#vector randomDirection
 #var running 0
 #start
 do
@@ -32,17 +31,17 @@ do
     0 constructor-rate!
   then
   
-  ; seek food
+  ; seek food (if not fleeing from bombs)
   44 periodic-food-sensor drop
   running nif
     food-found if
       food-position seek-location
-      0 world-width random 0 world-height random directiony! directionx!
+      0 world-width random 0 world-height random randomDirection!
     else
       engine-power nif
-        0 world-width random 0 world-height random directiony! directionx!
+        0 world-width random 0 world-height random randomDirection!
       then
-      directionx directiony seek-location
+      randomDirection seek-location
     then
   then
   

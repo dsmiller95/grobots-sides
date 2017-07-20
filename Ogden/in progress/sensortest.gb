@@ -1,0 +1,40 @@
+#side Test
+#author Ogden
+#color 990
+
+#type Sense
+
+#hardware
+  engine 0.08
+  solar-cells .4
+  energy 250 25
+  food-sensor 8 3
+  robot-sensor 8 3
+  processor 10
+  armor 150
+  
+#code
+1 robot-sensor-sees-friends!
+robot-sensor-focus-distance
+drop
+1 100 random-int flag!
+do
+  fire-robot-sensor
+  robot-found if
+    do
+      robot-side
+      drop
+      robot-flag
+      drop
+    next-robot while-loop
+  then
+  fire-food-sensor
+  food-found if
+    do
+      food-position
+      drop drop
+    next-food while-loop
+  then
+forever
+
+#end

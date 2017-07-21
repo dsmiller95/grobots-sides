@@ -20,6 +20,7 @@
 #vector randomDirection
 #var running 0
 #start
+0 radius 2 * + world-width radius 2 * - random 0 radius 2 * + world-height radius 2 * - random randomDirection!
 do
   ; make new
   constructor-progress nif
@@ -36,10 +37,9 @@ do
   running nif
     food-found if
       food-position seek-location
-      0 world-width random 0 world-height random randomDirection!
     else
       engine-power nif
-        0 world-width random 0 world-height random randomDirection!
+        0 radius 2 * + world-width radius 2 * - random 0 radius 2 * + world-height radius 2 * - random randomDirection!
       then
       randomDirection seek-location
     then

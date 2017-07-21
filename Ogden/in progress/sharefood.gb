@@ -1,0 +1,93 @@
+#side Sharing
+#author Ogden
+#color 029
+
+#type Sharer
+
+#hardware
+  engine 0.08
+  constructor 1.5
+  eater 2
+  energy 250 50
+  food-sensor 8 3
+  robot-sensor 9 5
+  processor 25
+  armor 150
+  blaster 30 7 15
+  repair-rate 0.3
+  
+#code
+#vector randomDirection
+#var claim-food
+#vector claimed-food-location
+#start
+0 radius 2 * + world-width radius 2 * - random 0 radius 2 * + world-height radius 2 * - random randomDirection!
+do
+  ; make new
+  constructor-progress nif
+    1 constructor-type!
+  then
+  energy max-energy 0.5 * >= if
+    constructor-max-rate constructor-rate!
+  else
+    0 constructor-rate!
+  then
+  
+  ; if we're at food
+  flag if
+    ; eat
+    claimed-food-location seek-location
+    ; if we're out of food, unclaim
+    eaten not if
+      0 flag!
+    then
+  else
+    ; seek food TODO: don't fire the sensors so goddamn often
+    fire-food-sensor
+    0 1 robot-sensor-sees-friends! robot-sensor-sees-enemies!
+    fire-robot-sensor
+    ; if we found food
+    food-found dup if
+      0 claim-food!
+      ; and there are friendly bots nearby
+      robot-found if
+        ; loop through each food
+        do
+          1 claim-food!
+          ; and loop through each bot to see if it has already claimed the food
+          do
+            ; set claim-food false if food is claimed
+            food-position drop robot-flag = not claim-food and claim-food!
+          next-robot while-loop
+        ; save current food location so it doesn't get overwritten by next-food in case it's the location we choose
+        food-position claimed-food-location!
+        ; if there's more food to check and we haven't claimed food yet, check next
+        next-food claim-food not and while-loop
+      else
+        1 claim-food!
+        food-position claimed-food-location!
+      then
+      ; if we can claim the food, head towards it. we'll claim it once we're there
+      claim-food if
+        claimed-food-location seek-location
+        ; if we're there and started eating, lay claim
+        position claimed-food-location 0.6 in-range eaten and if
+          claimed-food-location drop flag!
+        then
+      then
+      1 0 robot-sensor-sees-friends! robot-sensor-sees-enemies!
+    then
+    ; if we didn't find food in the first place, or we didn't find claimable food (the dup at "if we found food" gives us food-found)
+    not claim-food not or if
+      ; if we have no destination, give us a new one
+      engine-power nif
+          0 radius 2 * + world-width radius 2 * - random 0 radius 2 * + world-height radius 2 * - random randomDirection!
+      then
+      ; go there
+      randomDirection seek-location
+    then
+  then
+  
+forever
+
+#end

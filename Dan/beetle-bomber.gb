@@ -641,6 +641,22 @@ do
 	constructor-rate!
 forever
 
+
+do
+	energy 5 < if
+		3
+	else energy 40 < if
+		2
+	celse
+		0
+	then
+	
+	do
+
+	while-loop
+
+forever
+
 ;4
 #type fungus
 #color FFFFFF

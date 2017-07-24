@@ -1,6 +1,6 @@
 #side beetle-bombers-2
 #author Dan
-#seed 1 3 1 1 1 1
+#seed 3 1 1 1 1 4
 #color 656579
 ;-------------The best defense is a ludacris offense-------------;
 
@@ -26,6 +26,13 @@
 ;velocity position time
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 #code
+
+#const aphid 1
+#const bombadeir 2
+#const queen 3
+#const fungus 4
+#const tarantula 5
+
 
 #vector tmp-vect
 #var tmp
@@ -72,6 +79,9 @@ get-closest-queen-id: ;; position -- queenid
 	-1 10000
 	queen-pos-start-index
 	;; position closestID closestDist currentIndex
+	time queen-timeout <= if ;; if it's before the queen's timeout; default to index 0
+		5 dropn queen-pos-start-index return
+	then
 	do
 		dup read queen-timeout + time <= nif ;if the queen read on this vector hasn't timed out
 			;; position closestID closestDist currentIndex
@@ -83,6 +93,9 @@ get-closest-queen-id: ;; position -- queenid
 				;; position closestID closestDist currentIndex nextClosestDist
 				2swap 2drop over
 				;; position currentIndex nextClosestDist currentIndex
+			else
+				;; position closestID closestDist currentIndex nextClosestDist
+				drop
 			then
 		then
 		;; position closestID closestDist currentIndex
@@ -92,8 +105,9 @@ get-closest-queen-id: ;; position -- queenid
 return
 
 get-queen-location: ;; queenid -- queen-position is-active
+	dup 0 <= if drop 0 0 0 return then
 	dup 1 + vread
-	rot read queen-timeout + time <=
+	rot read queen-timeout + time >
 return
 
 #const attack-timeout 30
@@ -270,6 +284,9 @@ is-danger: ;vect -- flag
 return
 
 is-danger-nearby: ; vect -- flag
+	time danger-cooldown-time <= if
+		2drop 0 return
+	then
 	0 check-for-danger& end-check& 5 pick 5 pick
 	get-rounded-coord
 	2dup
@@ -386,22 +403,24 @@ return
 #decoration FF0000 dot
 #hardware
 processor 50
-solar-cells .015
-constructor 1
+solar-cells .01;5
+;constructor 1
 energy 500 20
 armor 60
 repair-rate 0.3
 engine 0.04 
 eater 1
 food-sensor 5
-syphon 0.5 20
+syphon 2 5
 #code
 
 #var found-new-dest
 #var last-alarm-armor
 #var request-energy
 
-#var returning-energy
+#const returning-energy 300
+#var approaching-id
+
 
 #vector dest
 
@@ -425,117 +444,142 @@ max-armor last-alarm-armor!
 
 
 do
-	energy 150 > if
-		constructor-type nif
-			1 1 1
-			3 type-population dup if
-				1 type-population swap / 4 > if
-					3
+;	energy 150 > if
+;		constructor-type nif
+;			1 1 1
+;			3 type-population dup if
+;				1 type-population swap / 4 > if
+;					3
+;				then
+;			else
+;				drop 3
+;			then
+;			2 type-population 101 < if
+;				2 2
+;			then
+;			stack 1 swap random-int
+;			pick
+;			constructor-type!
+;			stack dropn
+;		then
+;		constructor-max-rate constructor-rate!
+;	else
+;		0 constructor-rate!
+;	then
+	energy returning-energy > food-found not and energy max-energy >= or approaching-id or if
+		approaching-id nif
+			position get-closest-queen-id^ ;; position -- queenid
+			approaching-id!
+		then
+
+		approaching-id get-queen-location^ ;; queenid -- queen-position is-active
+		nif
+			
+			2drop position get-closest-queen-id^      ;; queen-position position -- queen-position queenid
+			approaching-id!						;; queen-position
+			approaching-id get-queen-location^  ;; queenid -- queen-position is-active
+			drop
+		then
+		;; queen-position
+		2dup position syphon-range in-range if
+			position v- rect-to-polar syphon-direction! syphon-distance!
+			syphon-max-rate negate syphon-rate!
+			0 engine-power!
+		else
+			seek-location
+			engine-max-power engine-power!
+		then
+		energy 100 < if
+			0 approaching-id!
+		then
+
+	else
+	
+		energy 5 < mass 20 > or not-request& nifg
+		constructor-type 3 = not-request& nifg 
+		;constructor-progress dup constructor-remaining + / 0.5 > not-request& nifg
+		request-if:
+			1 request-energy!
+			end-request-if& jump
+		not-request:
+			0 request-energy!
+		end-request-if:
+		
+		request-energy if
+			1000 max-energy energy - + send-energy-request^
+			0 syphon-rate!
+		else
+			energy 50 > if
+				found-syphon& no-syphon& syphon-in-range-request^
+				
+				found-syphon:
+					position v- rect-to-polar syphon-direction! syphon-distance!
+					syphon-max-rate negate syphon-rate!
+					end-syphon& jump
+				no-syphon:
+					0 syphon-rate!
+				end-syphon:
+			else
+				0 syphon-rate!
+			then
+		then
+			
+		energy 10 < if
+			sync sync sync sync sync sync sync sync sync sync
+			sync sync sync sync sync sync sync sync sync sync
+			sync sync sync sync sync sync sync sync sync sync
+			sync sync sync sync sync sync sync sync sync
+			80
+		else
+			40
+		then
+		periodic-food-sensor drop
+		food-found if
+			food-position position radius in-range if
+				0 engine-power!
+				food-energy 50 > if
+					found-new-dest nif
+						new-dest
+						1 found-new-dest!
+					else
+						sync sync sync sync sync sync sync sync sync sync
+					then
 				then
 			else
-				drop 3
+				food-position is-danger if
+					found-new-dest if
+						dest seek-location
+						dest position 3 in-range if
+							0 found-new-dest!
+						then
+					else
+						new-dest
+						dest seek-location
+						1 found-new-dest!
+					then
+				else
+					food-position seek-location engine-max-power engine-power!
+				then
 			then
-			2 type-population 101 < if
-				2 2
-			then
-			stack 1 swap random-int
-			pick
-			constructor-type!
-			stack dropn
-		then
-		constructor-max-rate constructor-rate!
-	else
-		0 constructor-rate!
-	then
-
-	energy 400 > food-found not and if
-		
-	then
-	
-	energy 5 < mass 20 > or not-request& nifg
-	constructor-type 3 = not-request& nifg 
-	;constructor-progress dup constructor-remaining + / 0.5 > not-request& nifg
-	request-if:
-		1 request-energy!
-		end-request-if& jump
-	not-request:
-		0 request-energy!
-	end-request-if:
-	
-	request-energy if
-		1000 max-energy energy - + send-energy-request^
-		0 syphon-rate!
-	else
-		energy 50 > if
-			found-syphon& no-syphon& syphon-in-range-request^
-			
-			found-syphon:
-				position v- rect-to-polar syphon-direction! syphon-distance!
-				syphon-max-rate negate syphon-rate!
-				end-syphon& jump
-			no-syphon:
-				0 syphon-rate!
-			end-syphon:
 		else
-			0 syphon-rate!
-		then
-	then
-		
-	energy 10 < if
-		sync sync sync sync sync sync sync sync sync sync
-		sync sync sync sync sync sync sync sync sync sync
-		sync sync sync sync sync sync sync sync sync sync
-		sync sync sync sync sync sync sync sync sync
-		80
-	else
-		40
-	then
-	periodic-food-sensor drop
-	food-found if
-		food-position position radius in-range if
-			0 engine-power!
-			food-energy 50 > if
-				found-new-dest nif
+			request-energy nif
+				dest seek-location
+				energy 10 < if
+					0.005
+				else energy 50 < if
+					0.1
+				celse
+					0.2
+				then
+				engine-power!
+				dest position 3 in-range if
 					new-dest
-					1 found-new-dest!
 				else
 					sync sync sync sync sync sync sync sync sync sync
 				then
-			then
-		else
-			food-position is-danger if
-				found-new-dest if
-					dest seek-location
-					dest position 3 in-range if
-						0 found-new-dest!
-					then
-				else
-					new-dest
-					dest seek-location
-					1 found-new-dest!
-				then
 			else
-				food-position seek-location engine-max-power engine-power!
+				0 engine-power!
 			then
-		then
-	else
-		request-energy nif
-			dest seek-location
-			energy 10 < if
-				0.005
-			else energy 50 < if
-				0.1
-			celse
-				0.2
-			then
-			engine-power!
-			dest position 3 in-range if
-				new-dest
-			else
-				sync sync sync sync sync sync sync sync sync sync
-			then
-		else
-			0 engine-power!
 		then
 	then
 	;If damaged, add position to current danger position table in public memory
@@ -649,23 +693,30 @@ armor 500
 processor 40
 solar-cells 0.1
 constructor 3
-energy 50 10
+energy 500 10
 robot-sensor 20 20
+engine 0.02
 
 #code
 #var nearby-tarantulas
 #var my-id
+#var last-id-set
+
+#const fungus-to-queen 3
+#const aphid-to-queen 7
 
 #start
 0 nearby-tarantulas!
-4 constructor-type!
 1 robot-sensor-sees-friends!
 
 position -1 set-queen-location^ my-id! ;;  position currentid -- curentid
+time last-id-set!
 
 do
-	
-	position my-id set-queen-location^ my-id!;;  position currentid -- curentid
+	queen-timeout 0.1 * last-id-set + time < if
+		position my-id set-queen-location^ my-id!;;  position currentid -- curentid
+		time last-id-set!
+	then
 	energy 5 < if
 		3
 	else energy 40 < if
@@ -682,16 +733,31 @@ do
 	then
 	periodic-robot-sensor if
 		robot-sensor-sees-friends if
-			0
+			0 0 0 0
+			;; <#other queens> <other queen pos sum> <tarantula count>
 			do
 				side robot-side = if
-					5 robot-type = +
+					tarantula robot-type = +
+					robot-type queen = if
+						rrot robot-position v+
+						;; <#other queens> <tarantula count> <other queen pos sum>
+						2swap swap 1 + swap 2swap
+						rot
+						;; <#other queens> <other queen pos sum> <tarantula count>
+					then
 				else
 					robot-velocity robot-position send-attack-request^
 				then
 				next-robot
 			while-loop
+			;; <#other queens> <other queen pos sum> <tarantula count>
 			nearby-tarantulas!
+			rot dup 0 = if
+				engine-power! 2drop
+			else
+				vs/ ;; <average other queen pos>
+				position v- vnegate unitize engine-velocity! engine-max-power engine-power!
+			then
 		else
 			do
 				robot-velocity robot-position send-attack-request^
@@ -703,13 +769,30 @@ do
 	
 	constructor-type nif
 		energy 30 > if
-			0 15 random-int nearby-tarantulas > if position is-danger-nearby and-if
-				5
+			0 10 random-int nearby-tarantulas > if position is-danger-nearby and-if
+				tarantula
 			else
-				2
+				0.5 random-bool if
+					bombadeir
+				else
+					queen type-population fungus-to-queen * fungus type-population - 0 max ;; desired fungus population
+					queen type-population aphid-to-queen * aphid type-population -   0 max ;; desired aphid population
+					;; <fungus defecit> <aphid defecit>
+					over + dup 0 <= if
+						0.25 random-bool queen bombadeir ifev
+					else
+						 / random-bool fungus aphid ifev
+					then
+				then
 			then
 		else
-			4
+			queen type-population fungus-to-queen * fungus type-population - 0 max ;; desired fungus population
+			queen type-population aphid-to-queen * aphid type-population -   0 max ;; desired aphid population
+			over + dup 0 <= if
+				0.25 random-bool queen bombadeir ifev
+			else
+				 / random-bool fungus aphid ifev
+			then
 		then
 		constructor-type! stack dropn
 	then
@@ -755,7 +838,6 @@ engine 0.03
 
 #start
 do
-	position get-closest-queen-id^ drop ;; position -- queenid
 	;grenades-cooldown attack-in-range-request& nifc
 	100 energy < no-syphon& nifg
 	found-syphon& no-syphon& syphon-in-range-request^

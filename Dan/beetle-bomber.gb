@@ -324,7 +324,7 @@ constructor 1
 energy 200 20
 armor 60
 repair-rate 0.3
-engine 0.04
+engine 0.04 
 eater 1
 food-sensor 5
 syphon 0.5 20

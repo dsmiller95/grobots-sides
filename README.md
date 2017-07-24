@@ -1,0 +1,1 @@
+To setup the sublime syntax highlighting plugin, copy 'grobots.tmLanguage' from the root of the repo into your Sublime packages directory; found here: C:\Users\<user>\AppData\Roaming\Sublime Text 3\Packages\User . It should auto-apply itself to any .gb files

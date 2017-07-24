@@ -3,7 +3,9 @@
 <plist version="1.0">
 <dict>
 	<key>fileTypes</key>
-	<array/>
+	<array>
+		<string>gb</string>
+	</array>
 	<key>name</key>
 	<string>Grobots</string>
 	<key>patterns</key>
@@ -12,13 +14,61 @@
 			<key>comment</key>
 			<string>comments</string>
 			<key>match</key>
-			<string>;+.*$</string>
+			<string>;+.*?$</string>
 			<key>name</key>
 			<string>comment.line.grobots</string>
 		</dict>
 		<dict>
+			<key>captures</key>
+			<dict>
+				<key>1</key>
+				<dict>
+					<key>name</key>
+					<string>keyword.other.grobots</string>
+				</dict>
+				<key>2</key>
+				<dict>
+					<key>name</key>
+					<string>entity.other.attribute-name.grobots</string>
+				</dict>
+				<key>3</key>
+				<dict>
+					<key>name</key>
+					<string>string.unquoted.other.grobots</string>
+				</dict>
+			</dict>
+			<key>comment</key>
+			<string>markup</string>
+			<key>match</key>
+			<string>^(#)(side|author|decoration|color|date|type|end)(.*?)$</string>
+		</dict>
+		<dict>
+			<key>captures</key>
+			<dict>
+				<key>1</key>
+				<dict>
+					<key>name</key>
+					<string>keyword.other.grobots</string>
+				</dict>
+				<key>2</key>
+				<dict>
+					<key>name</key>
+					<string>entity.other.attribute-name.grobots</string>
+				</dict>
+				<key>3</key>
+				<dict>
+					<key>name</key>
+					<string>constant.numeric.grobots</string>
+				</dict>
+			</dict>
+			<key>comment</key>
+			<string>seed markup</string>
+			<key>match</key>
+			<string>^(#)(seed)((?:\s+(?:(?:\d+\.?\d*)|(?:\.\d+)))+)\s*(?:;+.*)?$</string>
+		</dict>
+		<dict>
 			<key>begin</key>
-			<string>^(#)(hardware)$</string>
+			<string>^(#)(hardware)\s*(?:;+.*)?$</string>
 			<key>beginCaptures</key>
 			<dict>
 				<key>1</key>
@@ -55,7 +105,7 @@
 					<key>comment</key>
 					<string>single-param hardware defs</string>
 					<key>match</key>
-					<string>^(engine|constructor|solar-cells|eater|armor|repair-rate|shield|bomb)\s+((\d+\.?\d*)|(\.\d+))\s*?$</string>
+					<string>^(engine|constructor|solar-cells|eater|armor|repair-rate|shield|bomb)\s+((\d+\.?\d*)|(\.\d+))\s*?(?:;+.*)?$</string>
 				</dict>
 				<dict>
 					<key>captures</key>
@@ -79,7 +129,7 @@
 					<key>comment</key>
 					<string>2-param hardware defs</string>
 					<key>match</key>
-					<string>^(energy|force-field)\s+((\d+\.?\d*)|(\.\d+))\s+((\d+\.?\d*)|(\.\d+))\s*?$</string>
+					<string>^(energy|force-field)\s+((\d+\.?\d*)|(\.\d+))\s+((\d+\.?\d*)|(\.\d+))\s*?(?:;+.*)?$</string>
 				</dict>
 				<dict>
 					<key>captures</key>
@@ -103,7 +153,7 @@
 					<key>comment</key>
 					<string>2-param one optional hardware defs</string>
 					<key>match</key>
-					<string>^(processor|syphon|enemy-syphon|robot-sensor|food-sensor|shot-sensor)\s+((\d+\.?\d*)|(\.\d+))(\s+((\d+\.?\d*)|(\.\d+)))?\s*?$</string>
+					<string>^(processor|syphon|enemy-syphon|robot-sensor|food-sensor|shot-sensor)\s+((\d+\.?\d*)|(\.\d+))(\s+((\d+\.?\d*)|(\.\d+)))?\s*?(?:;+.*)?$</string>
 				</dict>
 				<dict>
 					<key>captures</key>
@@ -132,7 +182,7 @@
 					<key>comment</key>
 					<string>3-param hardware defs</string>
 					<key>match</key>
-					<string>^(blaster|grenades)\s+((\d+\.?\d*)|(\.\d+))\s+((\d+\.?\d*)|(\.\d+))\s+((\d+\.?\d*)|(\.\d+))\s*?$</string>
+					<string>^(blaster|grenades)\s+((\d+\.?\d*)|(\.\d+))\s+((\d+\.?\d*)|(\.\d+))\s+((\d+\.?\d*)|(\.\d+))\s*?(?:;+.*)?$</string>
 				</dict>
 			</array>
 		</dict>
@@ -245,7 +295,7 @@
 					<key>comment</key>
 					<string>consts</string>
 					<key>match</key>
-					<string>^(#)(const)\s+([\w-]+)\s+((\d+\.?\d*)|(\.\d+))\s*$</string>
+					<string>^(#)(const)\s+([\w-]+)\s+((\d+\.?\d*)|(\.\d+))\s*(?:;+.*)?$</string>
 				</dict>
 				<dict>
 					<key>captures</key>
@@ -274,7 +324,7 @@
 					<key>comment</key>
 					<string>vars</string>
 					<key>match</key>
-					<string>^(#)(var)\s+([\w-]+)(?:\s+((\d+\.?\d*)|(\.\d+)))?\s*$</string>
+					<string>^(#)(var)\s+([\w-]+)(?:\s+((\d+\.?\d*)|(\.\d+)))?\s*(?:;+.*)?$</string>
 				</dict>
 				<dict>
 					<key>captures</key>
@@ -308,13 +358,13 @@
 					<key>comment</key>
 					<string>vects</string>
 					<key>match</key>
-					<string>^(#)(vector)\s+([\w-]+)(?:\s+((?:\d+\.?\d*)|(?:\.\d+))\s+((?:\d+\.?\d*)|(?:\.\d+)))?\s*$</string>
+					<string>^(#)(vector)\s+([\w-]+)(?:\s+((?:\d+\.?\d*)|(?:\.\d+))\s+((?:\d+\.?\d*)|(?:\.\d+)))?\s*(?:;+.*)?$</string>
 				</dict>
 				<dict>
 					<key>comment</key>
 					<string>hardware keyword Variables, basics and constructor</string>
 					<key>match</key>
-					<string>(?&lt;=^|\s)(time|world-(?:size|width|height)|position|velocity|radius|mass|speed|side|type|id|parent-id|processor|remaining|engine-(?:power|max-power|velocity)|(?:friendly-|enemy-|food-|shot-|wall-)?collision|flag|energy|max-energy|solar-cells|eater|eaten|syphon(?:-max-rate|-range|-distance|-direction|-rate|ed)|constructor-(?:max-rate|rate|type|progress|remaining)|child-id)</string>
+					<string>(?&lt;=^|\s)(time|world-(?:size|width|height)|position|velocity|radius|mass|speed|side|type|id|parent-id|processor|remaining|engine-(?:power|max-power|velocity)|(?:friendly-|enemy-|food-|shot-|wall-)?collision|flag|energy|max-energy|solar-cells|eater|eaten|syphon(?:-max-rate|-range|-distance|-direction|-rate|ed)|constructor-(?:max-rate|rate|type|progress|remaining)|child-id)(?=^|\s|!)</string>
 					<key>name</key>
 					<string>variable.language.grobots</string>
 				</dict>
@@ -338,7 +388,7 @@
 					<key>comment</key>
 					<string>variable sensors; specific</string>
 					<key>match</key>
-					<string>(?&lt;=^|\s)((?:(?:robot|shot)-type)|(?:robot-(?:id|shield-fraction|bomb|reloading|sensor-sees-(?:friends|enemies)))|(?:(?:robot|food)-(?:mass|energy))|(?:shot-(?:power|sensor-sees-(?:enemy|friendly))))</string>
+					<string>(?&lt;=^|\s)((?:(?:robot|shot)-type)|(?:robot-(?:id|shield-fraction|bomb|reloading|sensor-sees-(?:friends|enemies)))|(?:(?:robot|food)-(?:mass|energy))|(?:shot-(?:power|sensor-sees-(?:enemy|friendly))))(?=^|\s|!)</string>
 				</dict>
 				<dict>
 					<key>captures</key>
@@ -352,7 +402,7 @@
 					<key>comment</key>
 					<string>variables defenses</string>
 					<key>match</key>
-					<string>(?&lt;=^|\s)((?:max-)?(?:armor|repair-rate|shield)|shield-fraction|last-hit)</string>
+					<string>(?&lt;=^|\s)((?:max-)?(?:armor|repair-rate|shield)|shield-fraction|last-hit)(?=^|\s|!)</string>
 				</dict>
 				<dict>
 					<key>captures</key>
@@ -366,7 +416,7 @@
 					<key>comment</key>
 					<string>variables offenses; blaster+grenades</string>
 					<key>match</key>
-					<string>(?&lt;=^|\s)((?:blaster|grenades)-(?:damage|range|speed|lifetime|reload-time|firing-cost|cooldown)|grenades-radius)</string>
+					<string>(?&lt;=^|\s)((?:blaster|grenades)-(?:damage|range|speed|lifetime|reload-time|firing-cost|cooldown)|grenades-radius)(?=^|\s|!)</string>
 				</dict>
 				<dict>
 					<key>captures</key>
@@ -380,7 +430,7 @@
 					<key>comment</key>
 					<string>variables offenses; forcefield+syphon</string>
 					<key>match</key>
-					<string>(?&lt;=^|\s)((?:force-field-|enemy-syphon-)(range|distance|direction)|force-field-(?:(?:max-)?power|angle|radius)|enemy-syphon(?:(?:-max)?-rate|ed))</string>
+					<string>(?&lt;=^|\s)((?:force-field-|enemy-syphon-)(range|distance|direction)|force-field-(?:(?:max-)?power|angle|radius)|enemy-syphon(?:(?:-max)?-rate|ed))(?=^|\s|!)</string>
 				</dict>
 				<dict>
 					<key>captures</key>
@@ -394,7 +444,7 @@
 					<key>comment</key>
 					<string>operators basics, constructor</string>
 					<key>match</key>
-					<string>(?&lt;=^|\s)(seek-(?:moving-)?location|restrict-position|die|v?(?:write|read)|(?:clear-|skip-)?messages|send|receive|type-population|autoconstruct|balance-type)(?=^|\s)</string>
+					<string>(?&lt;=^|\s)(seek-(?:moving-)?location|restrict-position|die|v?(?:write|read)|(?:clear-|skip-)?messages|send|receive|type-population|autoconstruct|balance-type)(?=^|\s|!)</string>
 				</dict>
 				<dict>
 					<key>captures</key>
@@ -409,6 +459,90 @@
 					<string>operators sensors, offenses</string>
 					<key>match</key>
 					<string>(?&lt;=^|\s)((?:fire|periodic)-(?:robot|food|shot)-sensor|next-(?:robot|food|shot)|(?:fire|lead)-(?:blaster|grenade)|set-force-field)(?=^|\s)</string>
+				</dict>
+				<dict>
+					<key>captures</key>
+					<dict>
+						<key>1</key>
+						<dict>
+							<key>name</key>
+							<string>variable.parameter</string>
+						</dict>
+					</dict>
+					<key>comment</key>
+					<string>base language variables</string>
+					<key>match</key>
+					<string>(?&lt;=^|\s)(stack(?:-limit)?)(?=^|\s)</string>
+				</dict>
+				<dict>
+					<key>captures</key>
+					<dict>
+						<key>1</key>
+						<dict>
+							<key>name</key>
+							<string>variable.function</string>
+						</dict>
+					</dict>
+					<key>comment</key>
+					<string>stack operators</string>
+					<key>match</key>
+					<string>(?&lt;=^|\s)((?:n|dr|2dr|rdr)op|nip|dropn|2?swap|r?rot|2?dup|tuck|2?over|pick|&gt;r|r&gt;)(?=^|\s)</string>
+				</dict>
+				<dict>
+					<key>captures</key>
+					<dict>
+						<key>1</key>
+						<dict>
+							<key>name</key>
+							<string>variable.function</string>
+						</dict>
+					</dict>
+					<key>comment</key>
+					<string>arithmetic</string>
+					<key>match</key>
+					<string>(?&lt;=^|\s)(\+|-|\*|/|negate|reciprocal|mod|rem|square|sqrt|exponent|floor|ceiling|round|min|max|abs|signum|reorient|(?:arc)?(?:sin|cos|tan)|arctan2|random(?:-angle|-int|-bool)?|pi|2pi|pi/2|e|epsilon|infinity|rect-to-polar|polar-to-rect|v(?:\+|-|negate|s\*|s/)|norm|angle|dot|project|cross|unitize|dist|in-range)(?=^|\s)</string>
+				</dict>
+				<dict>
+					<key>captures</key>
+					<dict>
+						<key>1</key>
+						<dict>
+							<key>name</key>
+							<string>variable.function</string>
+						</dict>
+					</dict>
+					<key>comment</key>
+					<string>boolean and misc operators</string>
+					<key>match</key>
+					<string>(?&lt;=^|\s)(=|&lt;&gt;|&lt;|&gt;|&lt;=|&gt;=|not|n?and|(?:n|x)?or|ifev|v?print|beep|pause|stop|sync|v?store|v?load)(?=^|\s)</string>
+				</dict>
+				<dict>
+					<key>captures</key>
+					<dict>
+						<key>1</key>
+						<dict>
+							<key>name</key>
+							<string>variable.function</string>
+						</dict>
+					</dict>
+					<key>comment</key>
+					<string>suffixes</string>
+					<key>match</key>
+					<string>(?&lt;=\w)(!|&amp;|\^|:)(?=^|\s)</string>
+				</dict>
+				<dict>
+					<key>captures</key>
+					<dict>
+						<key>1</key>
+						<dict>
+							<key>name</key>
+							<string>constant.numeric.grobots</string>
+						</dict>
+					</dict>
+					<key>comment</key>
+					<string>numerical constants</string>
+					<key>match</key>
+					<string>(?&lt;=^|\s)((\d+\.?\d*)|(\.\d+))(?=^|\s)</string>
 				</dict>
 			</array>
 		</dict>

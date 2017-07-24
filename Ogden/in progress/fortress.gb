@@ -1,0 +1,59 @@
+#side The Wall
+#author Ogden
+#color 767
+#seed 3 1 1 2 1 2 1 2
+
+#type Worker
+#hardware
+processor 2
+solar-cells .4
+constructor .4
+energy 15 1
+armor 25
+
+#code
+do
+	energy 5 >= if
+		constructor-progress nif
+			0.2 2 balance-type
+			0.8 1 balance-type
+		then
+		constructor-max-rate constructor-rate!
+	then
+forever
+
+#type Wall
+#color FFF
+#decoration 000 square
+#hardware
+processor 10
+solar-cells 0.05
+energy 50 15
+syphon 1 2
+armor 200
+grenades 25 15 15
+robot-sensor 15 1
+
+#code
+
+do
+
+forever
+
+#type Overseer
+#decoration 000 cross
+#hardware
+processor 10
+solar-cells 0.025
+energy 7 7
+armor 10
+robot-sensor 30 200
+
+#code
+1 robot-sensor-sees-friends!
+0 robot-sensor-sees-enemies!
+do
+	60 periodic-robot-sensor drop
+forever
+
+#end

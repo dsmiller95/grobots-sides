@@ -1,0 +1,58 @@
+#side Leech
+#author Ogden
+#color 141
+
+#type Leech
+
+#hardware
+  engine 0.1
+  constructor 1
+  solar-cells 0.05
+  enemy-syphon 2 12
+  energy 250 80
+  robot-sensor 20 1
+  processor 10
+  armor 150
+  
+#code
+
+#vector random-destination
+
+wait: ;a --
+  do
+    sync
+    1 - dup
+  0 > while-loop
+  drop
+  return
+  
+wander:
+  random-destination 0 = swap 0 = and random-destination position 2 in-range or if
+    0 world-width random 0 world-height random random-destination!
+  then
+  random-destination seek-location
+  return
+
+#start
+
+do
+  energy max-energy / 0.7 > if
+    constructor-progress nif
+      1 constructor-type!
+    then
+    constructor-max-rate constructor-rate!
+  else
+    0 constructor-rate!
+  then
+  30 periodic-robot-sensor drop
+  robot-found if
+    enemy-syphon-max-rate enemy-syphon-rate!
+    robot-distance enemy-syphon-distance!
+    robot-direction enemy-syphon-direction!
+  else
+    0 enemy-syphon-rate!
+    wander
+  then
+forever
+
+#end

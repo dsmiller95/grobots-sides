@@ -9,6 +9,8 @@
 ;1-100   Danger detection/evasion data grid
 ;101     Alert index
 ;102-122 Alert vectors
+;130-160 Queen location vectors
+;	<time set, xpos, ypos> x10
 ;
 ;;;;;;;;;;;
 ;Channel 1 format: [energy requests]
@@ -27,11 +29,76 @@
 
 #vector tmp-vect
 #var tmp
+#const queen-pos-start-index 130
+#const queen-pos-end-index 160
+#const queen-timeout 100
+
+
+;; currentid should be the saved id for the queen,
+;;	if no id, then it should be negative
+set-queen-location: ;;  position currentid -- curentid
+	dup 0 < if
+		drop
+		queen-pos-start-index
+		time queen-timeout <= if
+			dup 2swap rot
+			1 + vwrite
+			dup time swap write
+			return
+		then
+		do
+			dup read queen-timeout + time <= if ;if the queen read on this vector has timed out
+				;;<queenx> <queeny> <current looping id (index)>
+				dup 2swap rot
+				;;<index> <queenx> <queeny> <index>
+				1 + vwrite
+
+				dup time swap write
+				return
+			then
+		3 + dup queen-pos-end-index < while-loop
+	then
+
+	;;<queenx> <queeny> <id/index>
+	dup 2swap rot
+	;;<index> <queenx> <queeny> <index>
+	1 + vwrite
+
+	dup time swap write
+return
+
+;; gets the queen closest to the given vector
+get-closest-queen-id: ;; position -- queenid
+	-1 10000
+	queen-pos-start-index
+	;; position closestID closestDist currentIndex
+	do
+		dup read queen-timeout + time <= nif ;if the queen read on this vector hasn't timed out
+			;; position closestID closestDist currentIndex
+			dup 1 + vread
+			;; position closestID closestDist currentIndex queenPos
+			7 pick 7 pick
+			;; position closestID closestDist currentIndex queenPos position
+			dist dup 4 pick < if ;;if the distance is closer than the current closest distance
+				;; position closestID closestDist currentIndex nextClosestDist
+				2swap 2drop over
+				;; position currentIndex nextClosestDist currentIndex
+			then
+		then
+		;; position closestID closestDist currentIndex
+	3 + dup queen-pos-end-index < while-loop
+	
+	2drop rrot 2drop
+return
+
+get-queen-location: ;; queenid -- queen-position is-active
+	dup 1 + vread
+	rot read queen-timeout + time <=
+return
 
 #const attack-timeout 30
 #const attack-channel 2
 #var last-sent-attack-request
-
 send-attack-request: ;;request-velocity request-position --
 	last-sent-attack-request attack-timeout 0.7 * + time < if
 		time 5 attack-channel send
@@ -321,10 +388,10 @@ return
 processor 50
 solar-cells .015
 constructor 1
-energy 200 20
+energy 500 20
 armor 60
 repair-rate 0.3
-engine 0.04
+engine 0.04 
 eater 1
 food-sensor 5
 syphon 0.5 20
@@ -333,6 +400,8 @@ syphon 0.5 20
 #var found-new-dest
 #var last-alarm-armor
 #var request-energy
+
+#var returning-energy
 
 #vector dest
 
@@ -377,6 +446,10 @@ do
 		constructor-max-rate constructor-rate!
 	else
 		0 constructor-rate!
+	then
+
+	energy 400 > food-found not and if
+		
 	then
 	
 	energy 5 < mass 20 > or not-request& nifg
@@ -581,11 +654,18 @@ robot-sensor 20 20
 
 #code
 #var nearby-tarantulas
+#var my-id
+
 #start
 0 nearby-tarantulas!
 4 constructor-type!
 1 robot-sensor-sees-friends!
+
+position -1 set-queen-location^ my-id! ;;  position currentid -- curentid
+
 do
+	
+	position my-id set-queen-location^ my-id!;;  position currentid -- curentid
 	energy 5 < if
 		3
 	else energy 40 < if
@@ -641,6 +721,22 @@ do
 	constructor-rate!
 forever
 
+
+do
+	energy 5 < if
+		3
+	else energy 40 < if
+		2
+	celse
+		0
+	then
+	
+	do
+
+	while-loop
+
+forever
+
 ;4
 #type fungus
 #color FFFFFF
@@ -659,8 +755,8 @@ engine 0.03
 
 #start
 do
+	position get-closest-queen-id^ drop ;; position -- queenid
 	;grenades-cooldown attack-in-range-request& nifc
-	
 	100 energy < no-syphon& nifg
 	found-syphon& no-syphon& syphon-in-range-request^
 	found-syphon:

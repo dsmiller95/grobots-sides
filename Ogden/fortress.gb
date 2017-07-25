@@ -25,9 +25,19 @@ wait-for-message: ; channel -- message
 	rot drop
 return
 
+abort-if-dup-singleton: ; type --
+	dup constructor-type = if
+		type-population 0 > if
+			0 constructor-type!
+		then
+	else
+		drop
+	then
+return
+
 #type Peasant
 #hardware
-processor 2
+processor 8
 solar-cells .4
 constructor .4
 energy 15 1
@@ -57,6 +67,10 @@ do
 	then
 	; reproduce
 	energy 5 >= if
+		; if we're making a singleton, make sure someone else hasn't already
+		3 abort-if-dup-singleton
+		4 abort-if-dup-singleton
+		; new type if done
 		constructor-progress nif
 			0.7 1 balance-type
 			0.2 2 balance-type

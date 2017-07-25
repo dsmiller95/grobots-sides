@@ -3,6 +3,12 @@
 #color 767
 #seed 3 4 1 1 2 1 2 1 2
 
+TODO:
+Archers wasting lots of shots on harmless targets feeding just outside. Fix maybe?
+Add farmers (close-range eaters) and silo (large constructor).
+Mitigate against missiles.
+Catapults (prepped, reactionary missiles) would be cool.
+
 #code
 
 cluster-center: ; -- x y
@@ -79,6 +85,8 @@ do
 			epsilon 4 balance-type
 		then
 		constructor-max-rate constructor-rate!
+	else
+		0 constructor-rate!
 	then
 forever
 

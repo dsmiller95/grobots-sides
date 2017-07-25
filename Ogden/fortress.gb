@@ -1,7 +1,7 @@
 #side The Fortress
 #author Ogden
 #color 767
-#seed 3 4 1 1 2 1 2 1 2
+#seed 3 4 1 2 6 5 1 1 1 
 
 TODO:
 Archers wasting lots of shots on harmless targets feeding just outside. Fix maybe?
@@ -41,7 +41,7 @@ abort-if-dup-singleton: ; type --
 	then
 return
 
-#type Peasant
+#type Worker Peasant
 #hardware
 processor 8
 solar-cells .4
@@ -80,6 +80,7 @@ do
 		constructor-progress nif
 			0.7 1 balance-type
 			0.2 2 balance-type
+			0.05 5 balance-type
 			; just one of each of these
 			epsilon 3 balance-type
 			epsilon 4 balance-type
@@ -186,6 +187,35 @@ do
 			0 help!
 		then
 	then
+forever
+
+#type Farmer Peasant
+#decoration 0F0 hline
+#hardware
+processor 10
+energy 1000 35
+eater 3
+syphon 3 10
+armor 150
+engine 0.05
+food-sensor 10 1
+
+#code
+do
+
+forever
+
+#type Granary
+#decoration 8F0 triangle
+#hardware
+processor 3
+energy 2000 1
+constructor 4
+armor 75
+
+#code
+do
+
 forever
 
 #end

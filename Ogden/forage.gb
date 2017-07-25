@@ -5,16 +5,16 @@
 #type Forager
 
 #hardware
-  engine 0.08
-  constructor 1.5
-  eater 2
-  energy 250 25
-  food-sensor 8 1
-  robot-sensor 8 1
-  processor 10
-  armor 150
-  blaster 30 7 15
-  repair-rate 0.3
+engine 0.08
+constructor 1.5
+eater 2
+energy 250 25
+food-sensor 8 1
+robot-sensor 8 1
+processor 10
+armor 150
+blaster 30 7 15
+repair-rate 0.3
   
 #code
 #vector randomDirection

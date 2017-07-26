@@ -11,6 +11,18 @@ Catapults (prepped, reactionary missiles) would be cool.
 
 #code
 
+#const WORKER-TYPE 1
+#const ARCHER-TYPE 2
+#const LORD-TYPE 3
+#const BARRACKS-TYPE 4
+#const FARMER-TYPE 5
+#const GRANARY-TYPE 6
+
+#const CENTER-POSITION-CHANNEL 1
+#const BARRACKS-POSITION-CHANNEL 2
+#const BARRACKS-HELP-CHANNEL 3
+#const GRANARY-POSITION-CHANNEL 4
+
 cluster-center: ; -- x y
 	0 0 0
 	do
@@ -54,16 +66,12 @@ armor 25
 #vector barracks
 #var help 0
 
-2 wait-for-message barracks!
+BARRACKS-POSITION-CHANNEL wait-for-message barracks!
 
 do
 	; update
-	2 receive if
-		barracks!
-	then
-	3 receive if
-		help!
-	then
+	BARRACKS-POSITION-CHANNEL receive if barracks! then
+	BARRACKS-HELP-CHANNEL receive if help! then
 	; supply
 	help if
 		barracks position v- rect-to-polar syphon-direction! syphon-distance!
@@ -74,16 +82,16 @@ do
 	; reproduce
 	energy 5 >= if
 		; if we're making a singleton, make sure someone else hasn't already
-		3 abort-if-dup-singleton
-		4 abort-if-dup-singleton
+		LORD-TYPE abort-if-dup-singleton
+		BARRACKS-TYPE abort-if-dup-singleton
 		; new type if done
 		constructor-progress nif
-			0.7 1 balance-type
-			0.2 2 balance-type
-			0.05 5 balance-type
+			0.7 WORKER-TYPE balance-type
+			0.2 ARCHER-TYPE balance-type
+			0.02 FARMER-TYPE balance-type
 			; just one of each of these
-			epsilon 3 balance-type
-			epsilon 4 balance-type
+			epsilon LORD-TYPE balance-type
+			epsilon BARRACKS-TYPE balance-type
 		then
 		constructor-max-rate constructor-rate!
 	else
@@ -108,17 +116,13 @@ robot-sensor 15 1
 #vector center
 #vector barracks
 
-1 wait-for-message center!
-2 wait-for-message barracks!
+CENTER-POSITION-CHANNEL wait-for-message center!
+BARRACKS-POSITION-CHANNEL wait-for-message barracks!
 
 do
 	; update
-	1 receive if
-		center!
-	then
-	2 receive if
-		barracks!
-	then
+	CENTER-POSITION-CHANNEL receive if center! then
+	BARRACKS-POSITION-CHANNEL receive if barracks! then
 	; get to the wall
 	friendly-collision if
 		position center v- engine-velocity!
@@ -155,7 +159,7 @@ robot-sensor 30 200
 do
 	; scan, calculate, and announce fortress centerpoint
 	180 periodic-robot-sensor if
-		cluster-center 2 1 send
+		cluster-center 2 CENTER-POSITION-CHANNEL send
 	then
 forever
 
@@ -173,17 +177,17 @@ armor 75
 do
 	; announce position
 	1 + dup > 50 if
-		position 2 2 send
+		position 2 BARRACKS-POSITION-CHANNEL send
 		drop
 		0
 	then
 	; ask for emergency resupply if low
 	energy 250 < if
-		1 1 3 send
+		1 1 BARRACKS-HELP-CHANNEL send
 		1 help!
 	else
 		help if
-			0 1 3 send
+			0 1 BARRACKS-HELP-CHANNEL send
 			0 help!
 		then
 	then
@@ -201,8 +205,41 @@ engine 0.05
 food-sensor 10 1
 
 #code
-do
+#vector center
+#vector barracks
+#vector granary
 
+CENTER-POSITION-CHANNEL wait-for-message center!
+BARRACKS-POSITION-CHANNEL wait-for-message barracks!
+GRANARY-POSITION-CHANNEL wait-for-message granary!
+
+do
+	; update
+	CENTER-POSITION-CHANNEL receive if center! then
+	BARRACKS-POSITION-CHANNEL receive if barracks! then
+	GRANARY-POSITION-CHANNEL receive if granary! then
+	; do we need to unload?
+	energy max-energy = if
+		do
+			GRANARY-POSITION-CHANNEL receive if granary! then
+			granary seek-location
+		position granary 10 in-range not while-loop
+		0 engine-power!
+		do
+			GRANARY-POSITION-CHANNEL receive if granary! then
+			granary position v- rect-to-polar syphon-direction! syphon-distance!
+			syphon-max-rate negate syphon-rate!
+		energy 35 > while-loop
+		0 syphon-rate!
+	else
+		; check for food near fortress
+		44 periodic-food-sensor drop
+		food-found center food-position 15 in-range and if
+			food-position seek-location
+		else
+			0 engine-power!
+		then
+	then
 forever
 
 #type Granary
@@ -214,8 +251,24 @@ constructor 4
 armor 75
 
 #code
+0
 do
-
+	; announce position
+	1 + dup > 50 if
+		position 2 GRANARY-POSITION-CHANNEL send
+		drop
+		0
+	then
+	; reproduce
+	energy 5 >= if
+		; new if done
+		constructor-progress nif
+			WORKER-TYPE constructor-type!
+		then
+		constructor-max-rate constructor-rate!
+	else
+		0 constructor-rate!
+	then
 forever
 
 #end

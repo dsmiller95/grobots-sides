@@ -407,7 +407,7 @@ solar-cells .01;5
 ;constructor 1
 energy 500 20
 armor 60
-repair-rate 0.3
+repair-rate 0.1
 engine 0.04 
 eater 1
 food-sensor 5
@@ -418,7 +418,7 @@ syphon 2 5
 #var last-alarm-armor
 #var request-energy
 
-#const returning-energy 300
+#const returning-energy 200
 #var approaching-id
 
 
@@ -546,20 +546,20 @@ do
 					then
 				then
 			else
-				food-position is-danger if
-					found-new-dest if
-						dest seek-location
-						dest position 3 in-range if
-							0 found-new-dest!
-						then
-					else
-						new-dest
-						dest seek-location
-						1 found-new-dest!
-					then
-				else
+				;food-position is-danger if
+				;	found-new-dest if
+				;		dest seek-location
+				;		dest position 3 in-range if
+				;			0 found-new-dest!
+				;		then
+				;	else
+				;		new-dest
+				;		dest seek-location
+				;		1 found-new-dest!
+				;	then
+				;else
 					food-position seek-location engine-max-power engine-power!
-				then
+				;then
 			then
 		else
 			request-energy nif
@@ -703,7 +703,7 @@ engine 0.02
 #var last-id-set
 
 #const fungus-to-queen 3
-#const aphid-to-queen 7
+#const aphid-to-queen 5
 
 #start
 0 nearby-tarantulas!
@@ -756,7 +756,11 @@ do
 				engine-power! 2drop
 			else
 				vs/ ;; <average other queen pos>
-				position v- vnegate unitize engine-velocity! engine-max-power engine-power!
+				position v- vnegate 2dup norm 10 < if
+					unitize engine-velocity! engine-max-power engine-power!
+				else
+					2drop 0 engine-power!
+				then
 			then
 		else
 			do
@@ -779,7 +783,7 @@ do
 					queen type-population aphid-to-queen * aphid type-population -   0 max ;; desired aphid population
 					;; <fungus defecit> <aphid defecit>
 					over + dup 0 <= if
-						0.25 random-bool queen bombadeir ifev
+						queen
 					else
 						 / random-bool fungus aphid ifev
 					then

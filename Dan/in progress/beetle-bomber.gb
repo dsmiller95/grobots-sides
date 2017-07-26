@@ -410,7 +410,7 @@ armor 60
 repair-rate 0.1
 engine 0.04 
 eater 1
-food-sensor 5
+food-sensor 10
 syphon 2 5
 #code
 
@@ -599,14 +599,14 @@ forever
 #type bombadeir beetle
 #color 000
 #hardware
-engine 0.15
-armor 100
-bomb 500
+engine 0.2
+armor 300
+bomb 1500
 robot-sensor 10
 shot-sensor 5
 processor 50
-solar-cells 0.1
-energy 100 50
+solar-cells 0.03
+energy 300 300
 
 #code
 
@@ -666,12 +666,13 @@ do
 		robot_found nif robot-position write-alert then
 		1 robot_found!
 		robot-position robot-velocity seek-moving-location
+		engine-max-power engine-power!
 		enemy-collision friendly-collision not and if
 			die
 		then
 	else
 		0 robot_found!
-		dest seek-location damaged engine-max-power 0.05 ifev engine-power!
+		dest seek-location damaged engine-max-power 0.01 ifev engine-power!
 		dest position 3 in-range if
 			new-dest
 		then
@@ -704,6 +705,7 @@ engine 0.02
 
 #const fungus-to-queen 3
 #const aphid-to-queen 5
+#const tarantula-to-queen 5
 
 #start
 0 nearby-tarantulas!
@@ -773,7 +775,7 @@ do
 	
 	constructor-type nif
 		energy 30 > if
-			0 10 random-int nearby-tarantulas > if position is-danger-nearby and-if
+			0 tarantula-to-queen random-int nearby-tarantulas > if position is-danger-nearby and-if
 				tarantula
 			else
 				0.5 random-bool if

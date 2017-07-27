@@ -17,6 +17,42 @@ food-sensor 5
 repair-rate 0.1
 #code
 
+
+
+#var my-food-hash-index
+#vector my-claimed-food-location
+#const food-claim-timeout 100
+
+attempt-claim-food: ;; food-position -- is-mine
+   2dup my-claimed-food-location rot = rrot = and if
+      time my-food-hash-index read - food-claim-timeout 20 - > if
+         time my-food-hash-index write ;; this is still mine
+      then
+      2drop 1 return ; I already claimed this
+   then
+   2dup
+   1 mod 1000 * swap 1 mod 1000 * + abs ceiling 500 mod
+   dup 1 ifev  ;; if it's 0; pick 1
+   500 +
+   my-food-hash-index!
+
+   my-food-hash-index read dup food-claim-timeout + time > and if 2drop 0 return then
+   1 4 random-int
+   do 1 - dup while
+      sync ;; wait between 0 and 3 frames
+   loop
+   drop
+   my-food-hash-index read dup food-claim-timeout + time > and if
+      ; someone else claimed it first
+      2drop
+      0 return
+   else
+      time my-food-hash-index write
+      my-claimed-food-location!
+      1 return
+   then
+return
+
 #vector dest
 #var birthtime
 
@@ -38,9 +74,9 @@ energy 10 < if
    then
 then
 
-time birthtime - 2000 > if
-   die
-then
+;time birthtime - 2000 > if
+;   die
+;then
 
 energy 30 > if
    constructor-type nif
@@ -54,7 +90,17 @@ energy 10 > if armor max-armor < and-if
    max-repair-rate repair-rate!
 then
 40 periodic-food-sensor drop
-food-found if
+food-found food-not-found& nifg
+
+   do
+      food-position attempt-claim-food if
+         claimed-food-seek& jump
+      then
+   next-food while-loop
+   ;;if we couldn't claim any food; wander
+food-not-found& jump
+claimed-food-seek:
+
    food-position seek-location
    food-distance radius = if
       0 engine-power!
@@ -69,11 +115,15 @@ food-found if
          then
       then
    then
-else
+
+food-done& jump
+food-not-found:
    dest seek-location
    dest position 3 in-range if
       new-dest
    then
-then
+food-done:
+
+
 forever
 #end

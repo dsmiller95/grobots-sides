@@ -1,6 +1,6 @@
 #side beetle-bombers-2
 #author Dan
-#seed 3 1 1 1 1 4
+#seed 3 1 1 1 1 1 1 1
 #color 656579
 ;-------------The best defense is a ludacris offense-------------;
 
@@ -11,7 +11,10 @@
 ;102-122 Alert vectors
 ;130-160 Queen location vectors
 ;	<time set, xpos, ypos> x10
-;
+;500-1000 Food claiming hash-table
+;	each index is a claiming potential
+;	0: unclaimed
+;	1: claimed
 ;;;;;;;;;;;
 ;Channel 1 format: [energy requests]
 ;position urgency time
@@ -39,6 +42,42 @@
 #const queen-pos-start-index 130
 #const queen-pos-end-index 160
 #const queen-timeout 100
+
+
+#var my-food-hash-index
+#vector my-claimed-food-location
+#const food-claim-timeout 100
+
+attempt-claim-food: ;; food-position -- is-mine
+   2dup my-claimed-food-location rot = rrot = and if
+      time my-food-hash-index read - food-claim-timeout 20 - > if
+         time my-food-hash-index write ;; this is still mine
+      then
+      2drop 1 return ; I already claimed this
+   then
+   2dup
+   1 mod 1000 * swap 1 mod 1000 * + abs ceiling 500 mod
+   dup 1 ifev  ;; if it's 0; pick 1
+   500 +
+   my-food-hash-index!
+
+   my-food-hash-index read dup food-claim-timeout + time > and if 2drop 0 return then
+   1 4 random-int
+   do 1 - dup while
+      sync ;; wait between 0 and 3 frames
+   loop
+   drop
+   my-food-hash-index read dup food-claim-timeout + time > and if
+      ; someone else claimed it first
+      2drop
+      0 return
+   else
+      time my-food-hash-index write
+      my-claimed-food-location!
+      1 return
+   then
+return
+
 
 
 ;; currentid should be the saved id for the queen,
@@ -115,12 +154,12 @@ return
 #var last-sent-attack-request
 send-attack-request: ;;request-velocity request-position --
 	stack 4 < if sync pause sync pause then
-	last-sent-attack-request attack-timeout 0.1 * + time < if
+	;last-sent-attack-request attack-timeout 0.1 * + time < if
 		time 5 attack-channel send
 		time last-sent-attack-request!
-	else
-		4 dropn
-	then
+	;else
+	;	4 dropn
+	;then
 return
 
 
@@ -128,28 +167,30 @@ return
 #vector last-fetched-attack
 #vector last-fetched-attack-vel
 
+#var tmp-stack
+
 ensure-attack-pos-vel-set:	;; if the last target is still valid; attack it. Otherwise, search for a new target and set it to the variables and return true
 							;;  -- <is set>
 	;last-attack-fetch attack-timeout + time >
 	;last-fetched-attack position grenades-range in-range and set-target& ifg
 	
 	0 0 0 0
-	message-read: 4 dropn attack-channel receive message-stream-end& nifg ;; <vel> <pos> -- <newvel> <newpos> <time>
+	message-read: 4 dropn attack-channel receive 5 = message-stream-end& nifg ;; <vel> <pos> -- <newvel> <newpos> <time>
 		; <vel> <pos> <time>
 		attack-timeout + time > if
 		2dup position grenades-range in-range and-if
-		0 0 0 0 then ;keeps valid segments on the stack. if it's invalid; then it will be removed with the 4 dropn
-
-		stack 4 / dup floor = nif sync pause sync pause then
+			0 0 0 0
+		then ;keeps valid segments on the stack. if it's invalid; then it will be removed with the 4 dropn
+		stack 10 + stack-limit > if
+			;; too much on the stack; leave
+			4 dropn message-stream-end& jump
+		then
 	message-read& jump
 	
 	;; < <vel> <pos> > x N
-			
+
 	message-stream-end:
 		stack dup target-find-end& nifg ;; if nothing's on the stack, then there are no active attack requests
-			dup 4 / dup floor = nif
-				sync pause sync pause
-			then
 			;; <pos,vel>xN  <N * 4>
 			4 / 1 swap random-int 4 * 
 			;; <pos,vel>xN  <Random(N - 1)*4 : R>
@@ -596,34 +637,44 @@ do
 			40
 		then
 		periodic-food-sensor drop
-		food-found if
-			food-position position radius in-range if
-				0 engine-power!
-				food-energy 50 > if
-					found-new-dest nif
-						new-dest
-						1 found-new-dest!
-					else
-						sync sync sync sync sync sync sync sync sync sync
-					then
+		food-found aphid-food-not-found& nifg ;;if
+			do
+				food-position attempt-claim-food if
+					claimed-food-seek& jump
 				then
-			else
-				;food-position is-danger if
-				;	found-new-dest if
-				;		dest seek-location
-				;		dest position 3 in-range if
-				;			0 found-new-dest!
-				;		then
-				;	else
-				;		new-dest
-				;		dest seek-location
-				;		1 found-new-dest!
-				;	then
-				;else
-					food-position seek-location engine-max-power engine-power!
-				;then
-			then
-		else
+			next-food while-loop
+
+			aphid-food-not-found& jump
+			claimed-food-seek:
+				food-position position radius in-range if
+					0 engine-power!
+					food-energy 50 > if
+						found-new-dest nif
+							new-dest
+							1 found-new-dest!
+						;else
+							;sync sync sync sync sync sync sync sync sync sync
+						then
+					then
+				else
+					;food-position is-danger if
+					;	found-new-dest if
+					;		dest seek-location
+					;		dest position 3 in-range if
+					;			0 found-new-dest!
+					;		then
+					;	else
+					;		new-dest
+					;		dest seek-location
+					;		1 found-new-dest!
+					;	then
+					;else
+						food-position seek-location engine-max-power engine-power!
+					;then
+				then
+
+		aphid-food-done& jump
+		aphid-food-not-found: ;;else
 			request-energy nif
 				dest seek-location
 				energy 10 < if
@@ -642,7 +693,7 @@ do
 			else
 				0 engine-power!
 			then
-		then
+		aphid-food-done: ;; then
 	then
 	;If damaged, add position to current danger position table in public memory
 	armor last-alarm-armor < if
@@ -756,7 +807,7 @@ armor 500
 processor 40
 solar-cells 0.1
 constructor 3
-energy 500 10
+energy 1000 10
 robot-sensor 20 20
 engine 0.02
 
@@ -767,8 +818,10 @@ engine 0.02
 #var found-robot-last
 #var found-robot-recently
 
-#const fungus-to-queen 4
-#const aphid-to-queen 3
+
+
+#var fungus-to-queen 4
+#var aphid-to-queen 3
 #const tarantula-to-queen 5
 
 #const robot-find-timeout 100
@@ -776,6 +829,10 @@ engine 0.02
 #start
 0 nearby-tarantulas!
 1 robot-sensor-sees-friends!
+
+
+2 fungus-to-queen!
+6 aphid-to-queen!
 
 position -1 set-queen-location^ my-id! ;;  position currentid -- curentid
 time last-id-set!
@@ -833,11 +890,12 @@ do
 				engine-power! 2drop
 			else
 				vs/ ;; <average other queen pos>
-				position v- 2dup norm 10 < if
-					vnegate unitize engine-velocity! engine-max-power engine-power!
-				else
-					2drop 0 engine-power!
-				then
+				2drop
+			;	position v- 2dup norm 5 < if
+			;		vnegate unitize engine-velocity! engine-max-power engine-power!
+			;	else
+			;		2drop 0 engine-power!
+			;	then
 			then
 		else
 			robot-found if
@@ -854,24 +912,32 @@ do
 			then
 		then
 
-		0 robot-sensor-sees-friends not found-robot-recently ifev robot-sensor-sees-friends!
+		found-robot-recently 0 robot-sensor-sees-friends not ifev robot-sensor-sees-friends!
 	then
 	
 	constructor-type nif
+		5000 time < if
+			4 fungus-to-queen!
+			3 aphid-to-queen!
+		then
 		energy 30 > if
 			0 tarantula-to-queen random-int nearby-tarantulas > if position is-danger-nearby and-if
 				tarantula
 			else
-				queen type-population 2 >= if 0.5 random-bool and-if
-					bombadeir
+				energy 500 > if
+					queen
 				else
-					queen type-population fungus-to-queen * fungus type-population - 0 max ;; desired fungus population
-					queen type-population aphid-to-queen * aphid type-population -   0 max ;; desired aphid population
-					;; <fungus defecit> <aphid defecit>
-					over + dup 0 <= if
-						queen
+					queen type-population 2 >= if 0.5 random-bool and-if
+						bombadeir
 					else
-						 / random-bool fungus aphid ifev
+						queen type-population fungus-to-queen * fungus type-population - 0 max ;; desired fungus population
+						queen type-population aphid-to-queen * aphid type-population -   0 max ;; desired aphid population
+						;; <fungus defecit> <aphid defecit>
+						over + dup 0 <= if
+							queen
+						else
+							 / random-bool fungus aphid ifev
+						then
 					then
 				then
 			then
@@ -978,17 +1044,22 @@ do
 		if
 			get-attack-pos^
 			grenades-cooldown nif 2dup last-fetched-attack-vel lead-grenade then
-			;;
+			;; <pos>
 			2dup position force-field-range in-range if
 				;; <pos>
-				position v- rect-to-polar force-field-direction! force-field-distance!
+				2dup position v- rect-to-polar force-field-direction! force-field-distance!
 
-				;;stop its movement
-				last-fetched-attack-vel rect-to-polar negate force-field-angle! drop force-field-max-power force-field-power!
+				last-fetched-attack-vel abs swap abs + 0.1 < if
+					;;stop its movement
+					last-fetched-attack-vel rect-to-polar negate force-field-angle! drop force-field-max-power force-field-power!
+					2drop
+				else
+					;;push it away
+					position v- rect-to-polar force-field-angle! drop force-field-max-power force-field-power!
+				then
 
-				;;push it away
-				;last-fetched-attack position v- rect-to-polar force-field-angle! drop force-field-max-power force-field-power!
 			else
+				2drop
 				0 force-field-power!
 			then
 	else

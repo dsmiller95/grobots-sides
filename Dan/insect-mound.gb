@@ -1,7 +1,7 @@
-#side beetle-bombers-2
+#side Insect Mound
 #author Dan
 #seed 3 1 1 1 1 1 1 1
-#color 656579
+#color 446600
 ;-------------The best defense is a ludacris offense-------------;
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -30,7 +30,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 #code
 
-#const aphid 1
+#const caterpillar 1
 #const bombadeir 2
 #const queen 3
 #const fungus 4
@@ -501,16 +501,16 @@ return
 
 
 ;1
-#type aphid
-#color 00FF00
-#decoration FF0000 dot
+#type caterpillar
+#color 00cc00
+#decoration ffff00 triangle
 #hardware
 processor 50
-solar-cells .01;5
+solar-cells .01
 ;constructor 1
 energy 500 20
 armor 60
-repair-rate 0.1
+repair-rate 0.05
 engine 0.04 
 eater 1
 food-sensor 10
@@ -637,14 +637,14 @@ do
 			40
 		then
 		periodic-food-sensor drop
-		food-found aphid-food-not-found& nifg ;;if
+		food-found caterpillar-food-not-found& nifg ;;if
 			do
 				food-position attempt-claim-food if
 					claimed-food-seek& jump
 				then
 			next-food while-loop
 
-			aphid-food-not-found& jump
+			caterpillar-food-not-found& jump
 			claimed-food-seek:
 				food-position position radius in-range if
 					0 engine-power!
@@ -673,8 +673,8 @@ do
 					;then
 				then
 
-		aphid-food-done& jump
-		aphid-food-not-found: ;;else
+		caterpillar-food-done& jump
+		caterpillar-food-not-found: ;;else
 			request-energy nif
 				dest seek-location
 				energy 10 < if
@@ -693,7 +693,7 @@ do
 			else
 				0 engine-power!
 			then
-		aphid-food-done: ;; then
+		caterpillar-food-done: ;; then
 	then
 	;If damaged, add position to current danger position table in public memory
 	armor last-alarm-armor < if
@@ -710,7 +710,8 @@ forever
 
 ;2
 #type bombadeir beetle
-#color 000
+#color 800000
+#decoration FF0000 x
 #hardware
 engine 0.1
 armor 100
@@ -800,8 +801,9 @@ do
 forever
 
 ;3
-#type queen
-#color FF009F
+#type Insect Queen
+#color ff9900
+#decoration ffffff circle
 #hardware
 armor 500
 processor 40
@@ -821,7 +823,7 @@ engine 0.02
 
 
 #var fungus-to-queen 4
-#var aphid-to-queen 3
+#var caterpillar-to-queen 3
 #const tarantula-to-queen 5
 
 #const robot-find-timeout 100
@@ -832,7 +834,7 @@ engine 0.02
 
 
 2 fungus-to-queen!
-6 aphid-to-queen!
+6 caterpillar-to-queen!
 
 position -1 set-queen-location^ my-id! ;;  position currentid -- curentid
 time last-id-set!
@@ -918,7 +920,7 @@ do
 	constructor-type nif
 		5000 time < if
 			4 fungus-to-queen!
-			3 aphid-to-queen!
+			3 caterpillar-to-queen!
 		then
 		energy 30 > if
 			0 tarantula-to-queen random-int nearby-tarantulas > if position is-danger-nearby and-if
@@ -931,23 +933,23 @@ do
 						bombadeir
 					else
 						queen type-population fungus-to-queen * fungus type-population - 0 max ;; desired fungus population
-						queen type-population aphid-to-queen * aphid type-population -   0 max ;; desired aphid population
-						;; <fungus defecit> <aphid defecit>
+						queen type-population caterpillar-to-queen * caterpillar type-population -   0 max ;; desired caterpillar population
+						;; <fungus defecit> <caterpillar defecit>
 						over + dup 0 <= if
 							queen
 						else
-							 / random-bool fungus aphid ifev
+							 / random-bool fungus caterpillar ifev
 						then
 					then
 				then
 			then
 		else
 			queen type-population fungus-to-queen * fungus type-population - 0 max ;; desired fungus population
-			queen type-population aphid-to-queen * aphid type-population -   0 max ;; desired aphid population
+			queen type-population caterpillar-to-queen * caterpillar type-population -   0 max ;; desired caterpillar population
 			over + dup 0 <= if
 				0.25 random-bool queen bombadeir ifev
 			else
-				 / random-bool fungus aphid ifev
+				 / random-bool fungus caterpillar ifev
 			then
 		then
 		constructor-type! stack dropn
@@ -978,7 +980,8 @@ forever
 
 ;4
 #type fungus
-#color FFFFFF
+#color 666666
+#decoration 1a1a1a square
 #hardware
 
 armor 50
@@ -1022,7 +1025,7 @@ forever
 ;5
 #type tarantula
 #color FFFF00
-#decoration FF0000 x
+#decoration 660033 x
 #hardware
 engine 0.01
 armor 100
@@ -1030,38 +1033,65 @@ energy 500 50
 processor 100
 grenades 50 25 50
 force-field 0.1 15
+;robot-sensor 15
 
 #code
 
 ;#vector last-fetched-attack
 ;#vector last-fetched-attack-vel
+#vector robot-pos
+#vector robot-vel
+;expects robot-pos and robot-vel to be set
+do-attack: ;  --  
+	grenades-cooldown nif robot-pos robot-vel lead-grenade then
+	;; <pos>
+	robot-pos position force-field-range in-range if
+		;; <pos>
+		robot-pos position v- rect-to-polar force-field-direction! force-field-distance!
+
+		robot-vel abs swap abs + 0.1 < if
+			;;stop its movement
+			robot-vel rect-to-polar negate force-field-angle! drop force-field-max-power force-field-power!
+		else
+			;;push it away
+			robot-pos position v- rect-to-polar force-field-angle! drop force-field-max-power force-field-power!
+		then
+
+	else
+		0 force-field-power!
+	then
+return
 
 
 #start
 do
+
 	ensure-attack-pos-vel-set^	;; if the last target is still valid; attack it. Otherwise, search for a new target and set it to the variables and return true
 								;;  -- <is set>
 		if
-			get-attack-pos^
-			grenades-cooldown nif 2dup last-fetched-attack-vel lead-grenade then
-			;; <pos>
-			2dup position force-field-range in-range if
-				;; <pos>
-				2dup position v- rect-to-polar force-field-direction! force-field-distance!
 
-				last-fetched-attack-vel abs swap abs + 0.1 < if
-					;;stop its movement
-					last-fetched-attack-vel rect-to-polar negate force-field-angle! drop force-field-max-power force-field-power!
-					2drop
-				else
-					;;push it away
-					position v- rect-to-polar force-field-angle! drop force-field-max-power force-field-power!
-				then
-
-			else
-				2drop
-				0 force-field-power!
-			then
+			get-attack-pos^ robot-pos!
+			last-fetched-attack-vel robot-vel!
+			do-attack^
+			;grenades-cooldown nif 2dup last-fetched-attack-vel lead-grenade then
+			;;; <pos>
+			;2dup position force-field-range in-range if
+			;	;; <pos>
+			;	2dup position v- rect-to-polar force-field-direction! force-field-distance!
+;
+;				last-fetched-attack-vel abs swap abs + 0.1 < if
+;					;;stop its movement
+;					last-fetched-attack-vel rect-to-polar negate force-field-angle! drop force-field-max-power force-field-power!
+;					2drop
+;				else
+;					;;push it away
+;					position v- rect-to-polar force-field-angle! drop force-field-max-power force-field-power!
+;				then
+;
+;			else
+;				2drop
+;				0 force-field-power!
+;			then
 	else
 		0 force-field-power!
 	then

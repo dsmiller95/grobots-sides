@@ -11,13 +11,12 @@ for /D %%f in (*) do (
 	cd ..
 )
 
-echo %FILEPATHS%
 
 cd ../tournament_runner
 
 @echo on
 
-GrobotsHeadless.exe -t2 -l18000 -H -b2000 %FILEPATHS% > output.txt
 
+GrobotsHeadless.exe -t200 -l18000 -H -b2000 %FILEPATHS% > output.txt
 
 node post-results.js

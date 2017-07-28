@@ -49,7 +49,7 @@ function run(){
 			return side2.score - side1.score;
 		});
 
-		var msg = "";
+		var msg = "Rounds: " + sides[0].rounds + "\n";
 		for(var i = 0; i < sides.length; i++){
 			msg +=  sides[i].score + "% : " + sides[i].name + "\n";
 		}

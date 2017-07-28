@@ -1,6 +1,6 @@
 #side Insect Mound
 #author Dan
-#seed 3 1 1 1 1 1 1 1
+#seed 3 1 1 1 1 5
 #color 446600
 ;-------------The best defense is a ludacris offense-------------;
 
@@ -510,7 +510,7 @@ solar-cells .01
 ;constructor 1
 energy 500 20
 armor 60
-repair-rate 0.05
+repair-rate 0.1
 engine 0.04 
 eater 1
 food-sensor 10
@@ -998,7 +998,7 @@ engine 0.03
 #start
 do
 	;grenades-cooldown attack-in-range-request& nifc
-	100 energy < no-syphon& nifg
+	10 energy < no-syphon& nifg
 	found-syphon& no-syphon& syphon-in-range-request^
 	found-syphon:
 		position v- rect-to-polar syphon-direction! dup syphon-distance!
@@ -1049,7 +1049,7 @@ do-attack: ;  --
 		;; <pos>
 		robot-pos position v- rect-to-polar force-field-direction! force-field-distance!
 
-		robot-vel abs swap abs + 0.1 < if
+		robot-vel abs swap abs + 0.1 > if
 			;;stop its movement
 			robot-vel rect-to-polar negate force-field-angle! drop force-field-max-power force-field-power!
 		else

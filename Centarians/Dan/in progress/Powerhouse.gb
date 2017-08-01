@@ -1,0 +1,1052 @@
+#side powerhouse
+#author Dan
+#seed 2 1 1 1 1 4
+#color 777
+;-------------mitochondria is the powerhouse of the cell-------------;
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;SHARED DATA TABLE FORMAT:
+;1-100   Danger detection/evasion data grid
+;101     Alert index
+;102-122 Alert vectors
+;130-160 nucleus location vectors
+;	<time set, xpos, ypos> x10
+;500-1000 Food claiming hash-table
+;	each index is a claiming potential
+;	0: unclaimed
+;	1: claimed
+;;;;;;;;;;;
+;Channel 1 format: [energy requests]
+;position urgency time
+;urgency:	0: high energy constructor
+;			1: medium energy artillery
+;			2: medium energy constructor
+;			3: low energy artillery
+;			4: low/starving constructor
+;			5: starving gatherer
+;;;;;;;;;;;
+;Channel 2 format: [attack requests]
+;velocity position time
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+#code
+
+#const mitochondria 1
+#const nucleus 2
+#const chlorophyll 3
+#const cellulose 4
+
+
+#vector tmp-vect
+#var tmp
+#const nucleus-pos-start-index 130
+#const nucleus-pos-end-index 160
+#const nucleus-timeout 100
+
+
+#var my-food-hash-index
+#vector my-claimed-food-location
+#const food-claim-timeout 100
+
+attempt-claim-food: ;; food-position -- is-mine
+   2dup my-claimed-food-location rot = rrot = and if
+      time my-food-hash-index read - food-claim-timeout 20 - > if
+         time my-food-hash-index write ;; this is still mine
+      then
+      2drop 1 return ; I already claimed this
+   then
+   2dup
+   1 mod 1000 * swap 1 mod 1000 * + abs ceiling 500 mod
+   dup 1 ifev  ;; if it's 0; pick 1
+   500 +
+   my-food-hash-index!
+
+   my-food-hash-index read dup food-claim-timeout + time > and if 2drop 0 return then
+   1 4 random-int
+   do 1 - dup while
+      sync ;; wait between 0 and 3 frames
+   loop
+   drop
+   my-food-hash-index read dup food-claim-timeout + time > and if
+      ; someone else claimed it first
+      2drop
+      0 return
+   else
+      time my-food-hash-index write
+      my-claimed-food-location!
+      1 return
+   then
+return
+
+
+
+;; currentid should be the saved id for the nucleus,
+;;	if no id, then it should be negative
+set-nucleus-location: ;;  position currentid -- curentid
+	dup 0 < if
+		drop
+		nucleus-pos-start-index
+		time nucleus-timeout <= if
+			dup 2swap rot
+			1 + vwrite
+			dup time swap write
+			return
+		then
+		do
+			dup read nucleus-timeout + time <= if ;if the nucleus read on this vector has timed out
+				;;<nucleusx> <nucleusy> <current looping id (index)>
+				dup 2swap rot
+				;;<index> <nucleusx> <nucleusy> <index>
+				1 + vwrite
+
+				dup time swap write
+				return
+			then
+		3 + dup nucleus-pos-end-index < while-loop
+	then
+
+	;;<nucleusx> <nucleusy> <id/index>
+	dup 2swap rot
+	;;<index> <nucleusx> <nucleusy> <index>
+	1 + vwrite
+
+	dup time swap write
+return
+
+;; gets the nucleus closest to the given vector
+get-closest-nucleus-id: ;; position -- nucleusid
+	-1 10000
+	nucleus-pos-start-index
+	;; position closestID closestDist currentIndex
+	time nucleus-timeout <= if ;; if it's before the nucleus's timeout; default to index 0
+		5 dropn nucleus-pos-start-index return
+	then
+	do
+		dup read nucleus-timeout + time <= nif ;if the nucleus read on this vector hasn't timed out
+			;; position closestID closestDist currentIndex
+			dup 1 + vread
+			;; position closestID closestDist currentIndex nucleusPos
+			7 pick 7 pick
+			;; position closestID closestDist currentIndex nucleusPos position
+			dist dup 4 pick < if ;;if the distance is closer than the current closest distance
+				;; position closestID closestDist currentIndex nextClosestDist
+				2swap 2drop over
+				;; position currentIndex nextClosestDist currentIndex
+			else
+				;; position closestID closestDist currentIndex nextClosestDist
+				drop
+			then
+		then
+		;; position closestID closestDist currentIndex
+	3 + dup nucleus-pos-end-index < while-loop
+	
+	2drop rrot 2drop
+return
+
+get-nucleus-location: ;; nucleusid -- nucleus-position is-active
+	dup 0 <= if drop 0 0 0 return then
+	dup 1 + vread
+	rot read nucleus-timeout + time >
+return
+
+#const attack-timeout 30
+#const attack-channel 2
+#var last-sent-attack-request
+send-attack-request: ;;request-velocity request-position --
+	stack 4 < if sync pause sync pause then
+	;last-sent-attack-request attack-timeout 0.1 * + time < if
+		time 5 attack-channel send
+		time last-sent-attack-request!
+	;else
+	;	4 dropn
+	;then
+return
+
+
+#var last-attack-fetch -10000
+#vector last-fetched-attack
+#vector last-fetched-attack-vel
+
+
+get-attack-request: ; -- last-fetched-position timeLast
+	attack-channel receive if
+		dup last-attack-fetch > if
+			last-attack-fetch!
+			last-fetched-attack!
+			last-fetched-attack-vel!
+			attack-channel clear-messages
+		else
+			5 dropn
+		then
+	then
+
+	last-fetched-attack
+	last-attack-fetch
+return
+
+
+#var tmp-stack
+
+
+;ensure-attack-pos-vel-set:	;; if the last target is still valid; attack it. Otherwise, search for a new target and set it to the variables and return true
+;							;;  -- <is set>
+;	;last-attack-fetch attack-timeout + time >
+;	;last-fetched-attack position grenades-range in-range and set-target& ifg
+;	
+;	0 0 0 0
+;	message-read: 4 dropn attack-channel receive 5 = message-stream-end& nifg ;; <vel> <pos> -- <newvel> <newpos> <time>
+;		; <vel> <pos> <time>
+;		attack-timeout + time > if
+;		2dup position grenades-range in-range and-if
+;			0 0 0 0
+;		then ;keeps valid segments on the stack. if it's invalid; then it will be removed with the 4 dropn
+;		stack 10 + stack-limit > if
+;			;; too much on the stack; leave
+;			4 dropn message-stream-end& jump
+;		then
+;	message-read& jump
+;	
+;	;; < <vel> <pos> > x N
+
+;	message-stream-end:
+;		stack dup target-find-end& nifg ;; if nothing's on the stack, then there are no active attack requests
+			;; <pos,vel>xN  <N * 4>
+;			4 / 1 swap random-int 4 * 
+			;; <pos,vel>xN  <Random(N - 1)*4 : R>
+;			dup 1 + dup 1 + dup 1 +
+			;; <pos,vel>xN  <R> <R+1> <R+2> <R+3> 
+;			pick swap pick 2swap pick swap pick
+			;; <pos,vel>xN  <random picked vel> <random picked pos>
+		
+		
+;		last-fetched-attack! last-fetched-attack-vel!
+		
+		;attack-channel clear-messages
+;		time last-attack-fetch!
+		
+;	set-target:
+;		stack dropn 1 return  ;lead-grenade
+;	target-find-end:
+;		stack dropn
+;		last-attack-fetch attack-timeout + time >
+;		last-fetched-attack position grenades-range in-range and return
+		;stack dropn 0 return
+;return
+
+; assumes that the attack pos is valid
+get-attack-pos: ;  -- <pos>
+	last-fetched-attack last-fetched-attack-vel time last-attack-fetch - vs* v+ 
+return
+
+get-attack-vel: ; -- vel
+	last-fetched-attack-vel
+return
+
+#const syphon-timeout 50
+#const energy-channel 1
+#var last-sent-energy-request
+
+send-energy-request: ;; urgency --
+	last-sent-energy-request syphon-timeout 0.7 * + time < if
+		position rot time 4 energy-channel send
+		time last-sent-energy-request!
+	else
+		drop
+	then
+return
+
+#var last-syphon-time
+#vector syphon-target
+;
+;Jumps to found-target | no-target based on whether there is a valid target or not
+;	if jumped to found-target, target is on stack
+;	if jumped to no-target, stack is empty
+syphon-in-range-request: ; found-target& no-target& --
+	tmp-vect!
+	last-syphon-time syphon-timeout + time >
+	syphon-target position syphon-range in-range and valid-syphon-target& ifg
+	;;;Create sorting method!
+	
+	0 0
+	syphon-message-read: 2drop energy-channel receive no-valid-syphon-message& nifg
+			nip syphon-timeout + time > syphon-message-valid& ifg
+	syphon-message-read& jump
+	
+	syphon-message-valid:
+		2dup position syphon-range in-range syphon-message-read& nifg
+			syphon-target!
+			energy-channel clear-messages
+			time last-syphon-time!
+			valid-syphon-target& jump
+			
+	no-valid-syphon-message:
+		stack dropn
+		tmp-vect swap r> 2drop jump
+	valid-syphon-target:
+		syphon-target tmp-vect r> 2drop jump
+return
+	
+#const table-width 10
+#const table-height 10
+#const table-sec-width 10   ;world-width / table-width
+#const table-sec-height 10  ;""
+#const danger-cooldown-time 1500
+
+;loops through every vector between start-vect and end-vect,
+;	jumping to loop& each time, with the current vector on
+;	the top of the stack. loop& must return with the vector
+;	moved off the stack. Possible to have stacking operators
+;	in loop, meaning items can be left on the stack after
+;	returning from the looping function and they will remain
+;	on the stack in the same order when the end adress is
+;	called
+;	start- and end-vect must be valid adresses within this file
+loop-through: ;loop& end& end-vect start-vect  --
+	sync
+	swap tuck swap
+	
+	;loop& end& end-x end-y start-x progress-x progress-y
+	do dup 5 pick <= while ;y-loop
+		nip 2 pick swap
+		do over 6 pick <= while ;x-loop
+			sync
+			2dup
+			>r >r 2swap >r >r 2swap >r >r rot dup >r
+			return-label& >r
+			jump
+			return-label:
+				r> r> r> r> r> r> 1 + r>
+		loop
+		1 +
+	loop
+	5 dropn
+	nip jump
+return
+
+get-inTable-coord: ;vect -- mem-address
+	table-sec-height / floor table-sec-width * swap table-sec-width / floor + 1 +
+return
+
+get-rounded-coord:  ; vector -- vector rounded into resolution <formatted vector>
+	table-sec-height / floor
+	swap
+	table-sec-width  / floor
+	swap
+return
+
+get-inTable-from-rounded: ;formatted vect -- mem-address
+	table-sec-width * + 1 +
+return
+
+limit-into-range: ;max-vect-range vector -- vector
+	0 max rot min
+	swap
+	0 max rot min
+	swap
+return
+
+set-danger: ;danger-vect --
+	single-danger-set& set-danger-done& 
+	2swap get-rounded-coord
+	2dup
+	1 1 v+ table-width 1 - table-height 1 - 2swap limit-into-range
+	2swap
+	-1 -1 v+ table-width 1 - table-height 1 - 2swap limit-into-range
+	loop-through& jump
+	
+	single-danger-set:
+		get-inTable-from-rounded time swap write
+		return
+	set-danger-done:
+return
+
+is-danger: ;vect -- flag
+	time danger-cooldown-time < if
+		2drop 0 return
+	then
+	get-inTable-coord read danger-cooldown-time + time >
+return
+
+is-danger-nearby: ; vect -- flag
+	time danger-cooldown-time <= if
+		2drop 0 return
+	then
+	0 check-for-danger& end-check& 5 pick 5 pick
+	get-rounded-coord
+	2dup
+	1 1 v+ table-width 1 - table-height 1 - 2swap limit-into-range
+	2swap
+	-1 -1 v+ table-width 1 - table-height 1 - 2swap limit-into-range
+	;looping-label& end-loop-label& end-vect start-vect --
+	loop-through& jump
+	
+	check-for-danger:
+		table-sec-width * + 1 +
+		read danger-cooldown-time + time < nif
+			dup nif
+				drop 1
+			then
+		then
+	return
+	end-check:
+	rrot 2drop
+return ;either 1 or 0
+
+get-random-safe: ; -nothing- center-vect -- safe-vector
+	add-possible-vect& end-possible-loc-stacking& 2swap
+	get-rounded-coord
+	2dup
+	1 1 v+ table-width 1 - table-height 1 - 2swap limit-into-range
+	2swap
+	-1 -1 v+ table-width 1 - table-height 1 - 2swap limit-into-range
+	;looping-label& end-loop-label& end-vect start-vect --
+	loop-through& jump
+	
+	
+	add-possible-vect:
+		2dup
+		table-sec-width * + 1 +
+		read danger-cooldown-time + time < nif
+			2drop
+		then
+	return
+	end-possible-loc-stacking:	
+	
+	stack if	;if there are one or more safe locations
+		;drop a random number of pairs off the stack, gaurenteed to leave at least one pair
+		stack 2 / 1 - floor 0 swap random-int 2 * dropn
+		tmp-vect!
+		stack dropn
+	else		;if there are no safe locations found
+		 position get-rounded-coord tmp-vect!
+	then
+	tmp-vect table-sec-height * swap table-sec-width * swap
+	0 table-sec-width random 0 table-sec-height random v+
+return
+
+
+
+#const alert-index 100
+#const dangerTableLength 20
+
+write-alert: ;alertVector -- 
+	alert-index 1 + read dup 2 ifev
+	dup 2swap rot alert-index + vwrite
+	dangerTableLength mod 2 + alert-index 1 + write
+return
+
+most-recent-alert: ; -- index vector || 0 0 on faliure
+	alert-index 1 + read dup nif
+		drop 2 dup alert-index 1 + write
+	then
+	2 - dup ;OrignalAddress-2 originalAddress(shifted negative)-2
+	startLoop& jump
+	do 2dup <> while
+		startLoop:
+		2 - dangerTableLength mod
+		dup 2 alert-index + + vread 2dup or if
+			2swap nip 2 alert-index + + rrot
+			return
+		else
+			2drop
+		then
+	loop
+	2drop
+0 0 return
+
+random-biased-location: ; returns a vector biased with a 50% chance to be in a corner
+	0.5 random-bool if
+		0 world-width random 0 world-height random return
+	then
+	0 3 random-int dup nif
+		drop 0 10 random 0 10 random return
+	then
+	dup 1 = if
+		drop 0 10 random world-height dup 10 - random return
+	then
+	dup 2 = if
+		drop world-width dup 10 - random 0 10 random return
+	then
+	3 = if
+		world-width dup 10 - random world-height dup 10 - random return
+	then
+return
+
+
+limit-into-world: ;vector -- vector
+	0 max world-height min
+	swap
+	0 max world-width  min
+	swap
+return
+
+
+;1
+#type mitochondria
+#color 990000
+#decoration ffffff vline
+#hardware
+processor 50
+solar-cells .01
+energy 500 20
+armor 60
+engine 0.04 
+eater 1
+food-sensor 10
+syphon 2 5
+#code
+
+#var found-new-dest
+#var last-alarm-armor
+#var request-energy
+
+#const returning-energy 200
+#var approaching-id
+
+
+#vector dest
+
+new-dest:
+	position
+	time danger-cooldown-time < if
+		dup 15 - 0 max swap 15 + world-height min random
+		swap
+		dup 15 - 0 max swap 15 + world-width  min random
+		swap
+	else
+		get-random-safe
+	then
+	dest!
+return
+	
+
+#start
+new-dest
+max-armor last-alarm-armor!
+
+
+do
+	energy returning-energy > food-found not and energy max-energy >= or approaching-id or if
+		approaching-id nif
+			position get-closest-nucleus-id^ ;; position -- nucleusid
+			approaching-id!
+		then
+
+		approaching-id get-nucleus-location^ ;; nucleusid -- nucleus-position is-active
+		nif
+			
+			2drop position get-closest-nucleus-id^      ;; nucleus-position position -- nucleus-position nucleusid
+			approaching-id!						;; nucleus-position
+			approaching-id get-nucleus-location^  ;; nucleusid -- nucleus-position is-active
+			drop
+		then
+		;; nucleus-position
+		2dup position syphon-range in-range if
+			position v- rect-to-polar syphon-direction! syphon-distance!
+			syphon-max-rate negate syphon-rate!
+			0 engine-power!
+		else
+			seek-location
+			engine-max-power engine-power!
+		then
+		energy 100 < if
+			0 approaching-id!
+		then
+
+	else
+		energy 50 > if
+			found-syphon& no-syphon& syphon-in-range-request^
+			
+			found-syphon:
+				position v- rect-to-polar syphon-direction! syphon-distance!
+				syphon-max-rate negate syphon-rate!
+				end-syphon& jump
+			no-syphon:
+				0 syphon-rate!
+			end-syphon:
+		else
+			0 syphon-rate!
+		then
+			
+		energy 10 < if
+			80
+		else
+			40
+		then
+		periodic-food-sensor drop
+		food-found mitochondria-food-not-found& nifg ;;if
+			do
+				food-position attempt-claim-food if
+					claimed-food-seek& jump
+				then
+			next-food while-loop
+
+			mitochondria-food-not-found& jump
+			claimed-food-seek:
+				food-position position radius in-range if
+					0 engine-power!
+					food-energy 50 > if
+						found-new-dest nif
+							new-dest
+							1 found-new-dest!
+						else
+							sync sync sync sync sync sync sync sync sync sync 
+						then
+					then
+				else
+					food-position seek-location engine-max-power engine-power!
+				then
+
+		mitochondria-food-done& jump
+		mitochondria-food-not-found: ;;else
+			dest seek-location
+			energy 10 < if
+				0.005
+			else energy 50 < if
+				0.1
+			celse
+				0.2
+			then
+			engine-power!
+			dest position 3 in-range if
+				new-dest
+			then
+		mitochondria-food-done: ;; then
+	then
+	;If damaged, add position to current danger position table in public memory
+	armor last-alarm-armor < if
+		armor last-alarm-armor!
+		position 2dup write-alert set-danger
+	then
+	armor max-armor < if energy 100 > and-if
+		max-repair-rate repair-rate!
+	else
+		0 repair-rate!
+	then
+forever
+
+;2
+#type Insect nucleus
+#color ff9900
+#decoration ffffff circle
+#hardware
+armor 500
+processor 40
+solar-cells 0.1
+constructor 3
+energy 1000 10
+robot-sensor 20 20
+engine 0.02
+
+#code
+#var nearby-celluloses
+#var my-id
+#var last-id-set
+#var found-robot-last
+#var found-robot-recently
+
+
+
+#var chlorophyll-to-nucleus 4
+#var mitochondria-to-nucleus 3
+#const cellulose-to-nucleus 5
+
+#const robot-find-timeout 100
+
+#start
+0 nearby-celluloses!
+1 robot-sensor-sees-friends!
+
+
+2 chlorophyll-to-nucleus!
+6 mitochondria-to-nucleus!
+
+position -1 set-nucleus-location^ my-id! ;;  position currentid -- curentid
+time last-id-set!
+-100 found-robot-last!
+0 found-robot-recently!
+
+do
+	nucleus-timeout 0.1 * last-id-set + time < if
+		position my-id set-nucleus-location^ my-id!;;  position currentid -- curentid
+		time last-id-set!
+	then
+	energy 5 < if
+		3
+	else energy 40 < if
+		2
+	celse
+		0
+	then		
+	send-energy-request^
+	
+	energy 30 > if
+		found-robot-recently if
+			5
+		else
+			20
+		then
+	else
+		50
+	then
+	periodic-robot-sensor if
+		robot-sensor-sees-friends if
+		;found-robot-recently not and-if
+			0 0 0 0
+			;; <#other nucleuss> <other nucleus pos sum> <cellulose count>
+			do
+				side robot-side = if
+					cellulose robot-type = +
+					robot-type nucleus = if
+						rrot robot-position v+
+						;; <#other nucleuss> <cellulose count> <other nucleus pos sum>
+						2swap swap 1 + swap 2swap
+						rot
+						;; <#other nucleuss> <other nucleus pos sum> <cellulose count>
+					then
+				else
+					robot-velocity robot-position send-attack-request^
+					1 found-robot-recently!
+					time found-robot-last!
+				then
+				next-robot
+			while-loop
+			;; <#other nucleuss> <other nucleus pos sum> <cellulose count>
+			nearby-celluloses!
+			rot dup 0 = if
+				engine-power! 2drop
+			else
+				vs/ ;; <average other nucleus pos>
+				2drop
+			;	position v- 2dup norm 5 < if
+			;		vnegate unitize engine-velocity! engine-max-power engine-power!
+			;	else
+			;		2drop 0 engine-power!
+			;	then
+			then
+		else
+			robot-found if
+				do
+					robot-velocity robot-position send-attack-request^
+					1 found-robot-recently!
+					time found-robot-last!
+					next-robot
+				while-loop
+			then
+			found-robot-recently if
+			found-robot-last robot-find-timeout + time < and-if
+				0 found-robot-recently!
+			then
+		then
+
+		found-robot-recently 0 robot-sensor-sees-friends not ifev robot-sensor-sees-friends!
+	then
+	
+	constructor-type nif
+		5000 time < if
+			4 chlorophyll-to-nucleus!
+			3 mitochondria-to-nucleus!
+		then
+		energy 30 > if
+			0 cellulose-to-nucleus random-int nearby-celluloses > if position is-danger-nearby and-if
+				cellulose
+			else
+				;energy 500 > if
+				;	0.25 random-bool nucleus cellulose ifev
+				;else
+					;nucleus type-population 2 >= if 0.5 random-bool and-if
+					;	bombadeir
+					;else
+						nucleus type-population chlorophyll-to-nucleus * chlorophyll type-population - 0 max ;; desired chlorophyll population
+						nucleus type-population mitochondria-to-nucleus * mitochondria type-population -   0 max ;; desired mitochondria population
+						;; <chlorophyll defecit> <mitochondria defecit>
+						over + dup 0 <= if
+							nucleus
+						else
+							 / random-bool chlorophyll mitochondria ifev
+						then
+					;then
+				;then
+			then
+		else
+			nucleus type-population chlorophyll-to-nucleus * chlorophyll type-population - 0 max ;; desired chlorophyll population
+			nucleus type-population mitochondria-to-nucleus * mitochondria type-population -   0 max ;; desired mitochondria population
+			over + dup 0 <= if
+				0.25 random-bool nucleus cellulose ifev
+			else
+				 over + / random-bool chlorophyll mitochondria ifev
+			then
+		then
+		constructor-type! stack dropn
+	then
+	energy 10 > if
+		constructor-max-rate
+	else
+		0
+	then
+	constructor-rate!
+forever
+
+;3
+#type chlorophyll
+#color 00ff00
+#decoration 00ffff x
+#hardware
+
+armor 50
+repair-rate 0.04
+solar-cells 0.5
+syphon 0.9 10
+energy 300 0
+processor 50
+engine 0.03
+#code
+
+#start
+do
+	;grenades-cooldown attack-in-range-request& nifc
+	10 energy < no-syphon& nifg
+	found-syphon& no-syphon& syphon-in-range-request^
+	found-syphon:
+		position v- rect-to-polar syphon-direction! dup syphon-distance!
+		syphon-range 2 / > if
+			syphon-target seek-location
+		else
+			0 engine-power!
+		then
+		syphon-max-rate negate syphon-rate!
+		end-syphon& jump
+	no-syphon:
+		0 syphon-rate!
+		0 engine-power!
+	end-syphon:
+	
+	armor max-armor < if
+		max-repair-rate
+	else
+		0
+	then
+	repair-rate!
+forever
+
+;4
+#type cellulose
+#color FFFFFF
+#decoration 000000 square
+#hardware
+engine 0.1
+armor 200
+energy 500 200
+processor 100
+grenades 100 15 50
+force-field 0.1 15
+robot-sensor 15
+repair-rate 0.2
+
+#code
+
+;#vector last-fetched-attack
+;#vector last-fetched-attack-vel
+#vector robot-pos
+#vector robot-vel
+;expects robot-pos and robot-vel to be set
+do-attack: ;  --  
+	grenades-cooldown nif robot-pos robot-vel lead-grenade then
+	;; <pos>
+	robot-pos position force-field-range in-range if
+		;; <pos>
+		robot-pos position v- rect-to-polar force-field-direction! force-field-distance!
+
+		;robot-vel abs swap abs + 0.1 > if
+			;;stop its movement
+		;	robot-vel rect-to-polar negate force-field-angle! drop force-field-max-power force-field-power!
+		;else
+			;;keep it at a distance
+			robot-pos position v- rect-to-polar swap 10 > robot-bomb not and if ;if it's a certain distance away
+				;draw it in
+  				negate force-field-angle! 
+			else
+				;push it away
+				force-field-angle!
+			then
+			force-field-max-power force-field-power!
+		;	0 force-field-power!
+		;then
+
+	else
+		0 force-field-power!
+	then
+return
+
+#var returning-queen
+
+seek-closest-queen:
+	returning-queen if
+		returning-queen get-nucleus-location^ if
+			2dup seek-location
+			engine-max-power 2 / engine-power!
+			position 10 in-range if
+				0 returning-queen!
+			then
+		else
+			2drop 0 returning-queen!
+		then
+	else
+		;; gets the nucleus closest to the given vector
+		position get-closest-nucleus-id^ ;; position -- nucleusid
+		;returning-queen!
+		dup get-nucleus-location^ ;; nucleusid -- nucleus-position is-active
+		;; nucleusid nucleus-position is-active
+		if
+		;; nucleusid nucleus-position
+			position dist 10 > if
+				returning-queen!
+			else
+				drop
+			then
+		else
+			;; nucleusid nucleus-position
+			3 dropn
+		then
+		0 engine-power!
+	then
+return
+
+
+#const alert-vector-timeout 200
+
+
+#start
+do
+	
+
+	energy 100 < armor max-armor 3 / < or if
+		3 send-energy-request^
+		seek-closest-queen^
+		0 force-field-power!
+		energy 100 >= if
+			max-repair-rate repair-rate!
+		else
+			0 repair-rate!
+		then
+	else
+		armor max-armor < if
+			max-repair-rate repair-rate!
+		else
+			0 repair-rate!
+		then
+		energy 450 < if
+			1 send-energy-request^
+		then
+
+		robot-found if
+			do-attack^
+			0 engine-power!
+		else
+			get-attack-request^ ; -- last-fetched-position timeLast
+			alert-vector-timeout + time > if
+				seek-location
+			else
+				2drop
+				;; -- 
+				seek-closest-queen^
+			then
+			0 force-field-power!
+		then
+
+		robot-found 10 grenades-reload-time ifev periodic-robot-sensor if
+			robot-found if
+				robot-position robot-pos!
+				robot-velocity robot-vel!
+				robot-vel robot-pos 
+				send-attack-request^ ;;request-velocity request-position --
+			then
+		then
+	then
+
+
+	;ensure-attack-pos-vel-set^	;; if the last target is still valid; attack it. Otherwise, search for a new target and set it to the variables and return true
+	;							;;  -- <is set>
+	;	if
+	;		get-attack-pos^ robot-pos!
+	;		last-fetched-attack-vel robot-vel!
+	;		do-attack^
+	;else
+	;	0 force-field-power!
+	;then
+
+forever
+
+
+
+
+;6
+#type fruit fly
+#color FFA0B0
+#hardware
+engine 0.2
+armor 10
+robot-sensor 15
+food-sensor 5
+eater 0.5
+processor 20
+solar-cells 0.04
+energy 150 50
+grenades 1 100 10
+
+#code
+#vector dest
+#var eating
+
+new-dest:
+	random-biased-location dest!
+return
+#start
+new-dest
+
+do
+	energy 40 > 			 end-robot-find& nifg
+	50 periodic-robot-sensor end-robot-find& nifg
+	robot-found 			 end-robot-find& nifg
+		robot-position write-alert
+	end-robot-find:
+	
+	grenades-cooldown not if energy 80 > and-if
+		most-recent-alert^ 2dup and if
+			position v- rect-to-polar over grenades-range <= if
+				fire-grenade
+			then
+			drop
+		else
+			2drop
+		then
+	then
+	
+	
+	40 periodic-food-sensor drop
+	food-found  goto-dest& nifg
+	energy 80 < eat1& ifg
+	energy max-energy < eating and eat2& ifg
+	0 eating!
+	goto-dest& jump
+	
+	eat1: 1 eating!
+	eat2:
+		food-position position radius in-range if
+			0 engine-power!
+		else
+			food-position seek-location engine-max-power engine-power!
+		then
+	pass-dest& jump
+	goto-dest:
+		dest seek-location engine-max-power engine-power!
+		dest position 3 in-range if
+			new-dest
+		then
+	pass-dest:
+	
+	energy 10 < if
+		0.01 engine-power!
+	then
+	
+forever
+#end
